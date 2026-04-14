@@ -1,6 +1,8 @@
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { Platform } from "react-native";
+import * as NavigationBar from "expo-navigation-bar";
 import { Provider } from 'react-redux';
 import "../global.css";
 import { store } from '../store/store';
@@ -21,6 +23,13 @@ export default function AuthLayout() {
         Lato_300Light,
         Lato_900Black,
     });
+
+    useEffect(() => {
+        if (Platform.OS !== "android") return;
+
+        NavigationBar.setBackgroundColorAsync("#ffffff").catch(() => { });
+        NavigationBar.setButtonStyleAsync("dark").catch(() => { });
+    }, []);
 
     useEffect(() => {
         if (fontsLoaded) SplashScreen.hideAsync();
