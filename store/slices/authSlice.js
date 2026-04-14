@@ -8,6 +8,7 @@ const authSlice = createSlice({
         password: '',
         newPassword: '',
         confirmPassword: '',
+        profileImage: null,
         otp: ['', '', '', ''],
         otpFlow: 'register', 
         rememberMe: false,
@@ -19,6 +20,8 @@ const authSlice = createSlice({
         setPassword: (state, action) => { state.password = action.payload; },
         setNewPassword: (state, action) => { state.newPassword = action.payload; },
         setConfirmPassword: (state, action) => { state.confirmPassword = action.payload; },
+        setProfileImage: (state, action) => { state.profileImage = action.payload; },
+        clearProfileImage: (state) => { state.profileImage = null; },
         setOtpDigit: (state, action) => {
             const { index, value } = action.payload;
             state.otp[index] = value;
@@ -30,10 +33,11 @@ const authSlice = createSlice({
         logout: (state) => {
             state.mobile = '';
             state.password = '';
+            state.profileImage = null;
             state.isLoggedIn = false;
         },
     },
 });
 
-export const { setName, setMobile, setPassword, setNewPassword, setConfirmPassword, setOtpDigit, clearOtp, setOtpFlow, toggleRememberMe, setLoggedIn, logout } = authSlice.actions;
+export const { setName, setMobile, setPassword, setNewPassword, setConfirmPassword, setProfileImage, clearProfileImage, setOtpDigit, clearOtp, setOtpFlow, toggleRememberMe, setLoggedIn, logout } = authSlice.actions;
 export default authSlice.reducer;

@@ -33,9 +33,7 @@ export default function AuthLayout() {
             <Stack>
                 <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="splash" options={{ headerShown: false, animation: "none" }} />
-                {/* Onboarding */}
                 <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "none" }} />
-                {/* Main */}
                 <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
             </Stack>
         </Provider>

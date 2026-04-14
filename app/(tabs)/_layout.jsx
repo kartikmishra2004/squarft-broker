@@ -1,5 +1,7 @@
 import { Tabs } from "expo-router";
-import { Image, Platform } from "react-native";
+import { Platform } from "react-native";
+import { Image } from "expo-image";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const icons = {
     home: {
@@ -26,38 +28,51 @@ const icons = {
 
 function TabIcon({ name, focused, size }) {
     const icon = icons[name];
-    const activeSize = size?.active ?? { width: 54, height: 54 };
-    const inactiveSize = size?.inactive ?? { width: 28, height: 28 };
+    const activeSize = size?.active ?? { width: 44, height: 44 };
+    const inactiveSize = size?.inactive ?? { width: 24, height: 24 };
     return (
         <Image
             source={focused ? icon.active : icon.inactive}
             style={[focused ? activeSize : inactiveSize]}
-            resizeMode="contain"
+            contentFit="contain"
+            transition={0}
         />
     );
 }
 
 export default function TabsLayout() {
+    const insets = useSafeAreaInsets();
+    const androidBottomInset = Platform.OS === "android" ? Math.max(insets.bottom, 0) : 0;
+    const iosBottomPadding = Platform.OS === "ios" ? Math.max(insets.bottom - 8, 6) : 8;
+
     return (
         <Tabs
             screenOptions={{
                 tabBarShowLabel: false,
                 tabBarStyle: {
-                    borderTopRightRadius: 50,
-                    borderTopLeftRadius: 50,
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    bottom: Platform.OS === "ios" ? 0 : androidBottomInset - 1,
+                    borderTopRightRadius: 45,
+                    borderTopLeftRadius: 45,
                     borderTopColor: "transparent",
                     backgroundColor: "#fff",
-                    paddingTop: 25,
+                    paddingTop: 15,
                     paddingHorizontal: 15,
-                    height: Platform.OS === "ios" ? 95 : 90,
-                    shadowColor: "#000",
-                    shadowOffset: {
-                        width: 0,
-                        height: 2,
-                    },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 3.84,
-                    elevation: 5,
+                    paddingBottom: iosBottomPadding,
+                    height: Platform.OS === "ios" ? 85 : 80,
+                    ...Platform.select({
+                        ios: {
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 4,
+                        },
+                        android: {
+                            elevation: 10,
+                        },
+                    }),
                 },
             }}
         >
@@ -84,8 +99,8 @@ export default function TabsLayout() {
                             name="book"
                             focused={focused}
                             size={{
-                                active: { width: 64, height: 64, position: "absolute", bottom: 5 },
-                                inactive: { width: 64, height: 64, position: "absolute", bottom: 5 },
+                                active: { width: 56, height: 56, position: "absolute", bottom: 0 },
+                                inactive: { width: 56, height: 56, position: "absolute", bottom: 0 },
                             }}
                         />
                     ),

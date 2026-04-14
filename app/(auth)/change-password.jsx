@@ -15,7 +15,6 @@ export default function ChangePassword() {
     const [showConfirm, setShowConfirm] = useState(false);
 
     const handleSubmit = () => {
-        // 
         dispatch(setLoggedIn(true));
         router.replace("/(tabs)/home");
     };
@@ -24,7 +23,6 @@ export default function ChangePassword() {
         <View className="flex-1">
             <StatusBar style="light" />
 
-            {/*  */}
             <View className="bg-[#4A43EC] pt-16 pb-10 px-6">
                 <View style={{ width: 60, height: 60, overflow: 'hidden' }} className="mb-6">
                     <Image source={logo} style={{ width: 110, height: 110, margin: -20 }} resizeMode="contain" />
@@ -33,7 +31,6 @@ export default function ChangePassword() {
                 <Text className="text-white/80 text-[14px]">Set your new password</Text>
             </View>
 
-            {/* */}
             <View className="flex-1 bg-white px-6 pt-8">
 
                 <Text className="text-gray-500 text-[13px] mb-1.5">New Password</Text>
