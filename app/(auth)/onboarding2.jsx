@@ -1,4 +1,4 @@
-import { Text, View, Image, Dimensions } from "react-native";
+import { Text, View, Image } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Link } from 'expo-router';
 
@@ -36,12 +36,14 @@ export default function Onboarding2() {
                     </View>
                 </Link>
             </View>
-            <View className="absolute bottom-3 left-0 right-0 overflow-hidden h-[50%] w-[100%]">
-                <Image
-                    source={require("../../assets/images/onboarding/onboarding2.png")}
-                    className="w-full h-full"
-                    resizeMode="contain"
-                />
+            <View className="absolute bottom-0 left-0 right-0 px-4 pb-4 h-[48%]">
+                <View className="flex-1 w-full overflow-hidden rounded-[34px] bg-white border border-white/70 shadow-2xl shadow-black/10">
+                    <Image
+                        source={require("../../assets/images/onboarding/onboarding2.gif")}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                    />
+                </View>
             </View>
         </View>
     );
