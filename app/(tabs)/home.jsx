@@ -57,13 +57,13 @@ export default function Home() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }} bounces={false}>
         <View
           style={{ paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 20 : 70 }}
-          className="bg-[#4A43EC] px-6 pb-[60px]"
+          className="bg-[#4A43EC] px-6 pb-[80px]"
         >
           <View className="flex-row justify-between items-center">
             <View className="flex-row items-center gap-3">
               <Image
                 src="https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                className="w-12 h-12 rounded-2xl border-2 border-white"
+                className="w-14 h-14 rounded-full border border-white"
               />
               <View>
                 <View className="flex-row items-center gap-1">
@@ -92,7 +92,7 @@ export default function Home() {
 
         {/* White Stats Card */}
         <View
-          className="bg-white rounded-[30px] p-[16px] -mt-10 mx-[10px] shadow-lg shadow-black/10"
+          className="bg-white rounded-[30px] p-[16px] -mt-16 mx-[10px] shadow-lg shadow-black/10"
           style={{ elevation: 8 }}
         >
           <View className="flex-row justify-between gap-3 mb-5">
