@@ -13,6 +13,7 @@ import {
     Lato_300Light,
     Lato_900Black,
 } from "@expo-google-fonts/lato";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,12 +40,15 @@ export default function AuthLayout() {
 
     return (
         <Provider store={store}>
-            <Stack>
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="splash" options={{ headerShown: false, animation: "none" }} />
-                <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "none" }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
-            </Stack>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+                <Stack>
+                    <Stack.Screen name="index" options={{ headerShown: false }} />
+                    <Stack.Screen name="splash" options={{ headerShown: false, animation: "none" }} />
+                    <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "none" }} />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
+                    <Stack.Screen name="(screens)" options={{ headerShown: false }} />
+                </Stack>
+            </GestureHandlerRootView>
         </Provider>
     );
 }

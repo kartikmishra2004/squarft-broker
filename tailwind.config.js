@@ -11,9 +11,14 @@ module.exports = {
     extend: {
       fontFamily: {
         lato: ["Lato_400Regular"],
+        "lato-regular": ["Lato_400Regular"],
+        "lato-medium": ["Lato_400Regular"],
+        "lato-italic": ["Lato_400Regular"],
         "lato-light": ["Lato_300Light"],
         "lato-bold": ["Lato_700Bold"],
         "lato-black": ["Lato_900Black"],
+        "manrope-bold": ["Lato_700Bold"],
+        "manrope-medium": ["Lato_400Regular"],
       },
     },
   },
