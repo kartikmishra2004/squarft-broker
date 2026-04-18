@@ -295,7 +295,12 @@ export default function PropertyType() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-1" contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}>{(propertiesByRoomType["1bhk"] || []).slice(0, 3).map((item) => (
-          <Pressable key={item.id} className="w-[220px] bg-white rounded-[24px] mr-4 border border-gray-100 overflow-hidden shadow-sm mb-4" style={{ elevation: 3 }}>
+          <Pressable
+            key={item.id}
+            onPress={() => router.push({ pathname: "/property-detail", params: { id: item.id } })}
+            className="w-[220px] bg-white rounded-[24px] mr-4 border border-gray-100 overflow-hidden shadow-sm mb-4"
+            style={{ elevation: 3 }}
+          >
 
             <Image source={item.image} className="w-full h-44" />
             <View className="p-3">

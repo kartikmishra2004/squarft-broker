@@ -8,6 +8,7 @@ export default function ScreensLayout() {
       <Stack.Screen name="add-customer-requirement" />
       <Stack.Screen name="customer-details" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="property-detail" />
     </Stack>
   );
 }

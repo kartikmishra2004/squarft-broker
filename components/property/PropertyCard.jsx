@@ -1,10 +1,15 @@
-import { View, Text, Image } from 'react-native';
+import { View, Text, Image, Pressable } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
+import { router } from 'expo-router';
 
 const PropertyCard = ({ item, propertyTypeLabel }) => {
     return (
-        <View
-            className="w-[48%] mb-6 border border-gray-100"
+        <Pressable
+            className="w-[48%] mb-6"
+            onPress={() => router.push({ pathname: "/property-detail", params: { id: item.id } })}
+        >
+            <View
+                className="w-full border border-gray-100"
             style={{
                 backgroundColor: 'white',
                 borderRadius: 36,
@@ -53,7 +58,8 @@ const PropertyCard = ({ item, propertyTypeLabel }) => {
                 </View>
             </View>
         </View>
-    );
+    </Pressable>
+);
 };
 
 export default PropertyCard;
