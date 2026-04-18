@@ -86,7 +86,7 @@ export default function TabsLayout() {
             <Tabs.Screen
                 name="favourite"
                 options={{
-                    headerTitle: "Favourite",
+                    headerShown: false,
                     tabBarIcon: ({ focused }) => <TabIcon name="favourite" focused={focused} />,
                 }}
             />
@@ -109,7 +109,7 @@ export default function TabsLayout() {
             <Tabs.Screen
                 name="discount"
                 options={{
-                    headerTitle: "Discount",
+                    headerShown: false,
                     tabBarIcon: ({ focused }) => <TabIcon name="discount" focused={focused} />,
                 }}
             />

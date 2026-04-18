@@ -13,6 +13,12 @@ import {
     Lato_300Light,
     Lato_900Black,
 } from "@expo-google-fonts/lato";
+import {
+    Roboto_400Regular,
+    Roboto_500Medium,
+    Roboto_700Bold,
+    Roboto_300Light,
+} from "@expo-google-fonts/roboto";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,6 +28,10 @@ export default function AuthLayout() {
         Lato_700Bold,
         Lato_300Light,
         Lato_900Black,
+        Roboto_400Regular,
+        Roboto_500Medium,
+        Roboto_700Bold,
+        Roboto_300Light,
     });
 
     useEffect(() => {
