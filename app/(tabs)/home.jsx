@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useSelector } from "react-redux";
 import { categoriesData, upcomingProjectsData } from "../../data/properties";
 
 const { width } = Dimensions.get("window");
@@ -30,6 +31,7 @@ const subTabs = ["Residential", "Commercial", "Agriculture"];
 export default function Home() {
   const [activeFilter, setActiveFilter] = useState("SELL");
   const [activeSubTab, setActiveSubTab] = useState("Residential");
+  const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
 
   const categories = useMemo(() => {
     return categoriesData[activeFilter]?.[activeSubTab] || [];
@@ -41,7 +43,7 @@ export default function Home() {
 
   const handleFilterPress = (filter) => {
     if (filter === "BUY") {
-      router.push("/(screens)/customer-requirement");
+      router.push("/customer-requirement");
     } else {
       setActiveFilter(filter);
     }
@@ -83,8 +85,16 @@ export default function Home() {
               <Pressable className="p-1">
                 <MaterialCommunityIcons name="wallet-outline" size={24} color="white" />
               </Pressable>
-              <Pressable className="p-1">
+              <Pressable
+                className="p-1 relative"
+                onPress={() => router.push("/notifications")}
+              >
                 <Ionicons name="notifications" size={24} color="white" />
+                {unwatchedCount > 0 ? (
+                  <View className="absolute top-0 right-0 bg-[#FF3B30] min-w-[14px] h-[14px] rounded-full items-center justify-center border border-white">
+                    <Text className="text-white text-[8px] font-manrope-bold">{unwatchedCount}</Text>
+                  </View>
+                ) : null}
               </Pressable>
             </View>
           </View>
@@ -169,6 +179,7 @@ export default function Home() {
               <Pressable
                 key={index}
                 style={{ width: (width - 70) / 3 }}
+                  onPress={() => router.push("/property-type")}
                 className="bg-[#F4F7FF] rounded-[18px] py-[15px] items-center space-y-2"
               >
                 <View className="w-10 h-10 justify-center items-center">
@@ -196,10 +207,10 @@ export default function Home() {
             {projects.map((project, index) => (
               <View
                 key={project.id}
-                className={`w-[290px] flex-row bg-[#F4F7FF] rounded-lg overflow-hidden mr-[15px] h-[110px] ${index === 0 ? 'border-2 border-[#4A43EC]' : ''}`}
+                className="w-[290px] flex-row bg-[#F4F7FF] rounded-lg overflow-hidden mr-[15px] h-[110px]"
               >
                 <Image source={project.image} className="w-[35%] h-full" resizeMode="cover" />
-                <View className="flex-1 p-2.5 justify-center">
+                <View className="flex-1 p-2.5 justify-center border-2 border-[#4A43EC] border-l-0 rounded-r-lg">
                   <Text className="text-sm text-black font-lato-bold mb-0.5" numberOfLines={1}>
                     {project.title}
                   </Text>
