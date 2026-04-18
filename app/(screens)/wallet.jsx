@@ -97,7 +97,6 @@ const WalletScreen = () => {
                         shadowOffset: { width: 0, height: 10 },
                         shadowOpacity: 0.3,
                         shadowRadius: 20,
-                        elevation: 10,
                     }}
                 >
                     <Text className="text-blue-100 text-center text-[11px] font-manrope-medium mb-0.5">Main balance</Text>

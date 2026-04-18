@@ -10,9 +10,10 @@ const authSlice = createSlice({
         confirmPassword: '',
         profileImage: null,
         otp: ['', '', '', ''],
-        otpFlow: 'register', 
+        otpFlow: 'register',
         rememberMe: false,
         isLoggedIn: false,
+        isKycCompleted: false,
     },
     reducers: {
         setName: (state, action) => { state.name = action.payload; },
@@ -30,14 +31,16 @@ const authSlice = createSlice({
         setOtpFlow: (state, action) => { state.otpFlow = action.payload; },
         toggleRememberMe: (state) => { state.rememberMe = !state.rememberMe; },
         setLoggedIn: (state, action) => { state.isLoggedIn = action.payload; },
+        setKycCompleted: (state, action) => { state.isKycCompleted = action.payload; },
         logout: (state) => {
             state.mobile = '';
             state.password = '';
             state.profileImage = null;
             state.isLoggedIn = false;
+            state.isKycCompleted = false;
         },
     },
 });
 
-export const { setName, setMobile, setPassword, setNewPassword, setConfirmPassword, setProfileImage, clearProfileImage, setOtpDigit, clearOtp, setOtpFlow, toggleRememberMe, setLoggedIn, logout } = authSlice.actions;
+export const { setName, setMobile, setPassword, setNewPassword, setConfirmPassword, setProfileImage, clearProfileImage, setOtpDigit, clearOtp, setOtpFlow, toggleRememberMe, setLoggedIn, setKycCompleted, logout } = authSlice.actions;
 export default authSlice.reducer;

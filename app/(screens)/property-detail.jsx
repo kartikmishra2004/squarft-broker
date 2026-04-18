@@ -65,7 +65,7 @@ export default function PropertyDetail() {
         <View
           className="bg-white px-7 pt-3.5 pb-2 rounded-b-[30px]"
           style={{
-            elevation: 10,
+            elevation: 3,
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 5 },
             shadowOpacity: 0.05,

@@ -1,7 +1,8 @@
 import { Tabs } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import KycModal from "../../components/KycModal";
 
 const icons = {
     home: {
@@ -46,80 +47,83 @@ export default function TabsLayout() {
     const iosBottomPadding = Platform.OS === "ios" ? Math.max(insets.bottom - 8, 6) : 8;
 
     return (
-        <Tabs
-            screenOptions={{
-                tabBarShowLabel: false,
-                tabBarStyle: {
-                    position: "absolute",
-                    left: 0,
-                    right: 0,
-                    bottom: -1,
-                    borderTopRightRadius: 45,
-                    borderTopLeftRadius: 45,
-                    borderTopColor: "transparent",
-                    backgroundColor: "#fff",
-                    paddingTop: 15,
-                    paddingHorizontal: 15,
-                    paddingBottom: Platform.OS === "ios" ? iosBottomPadding : Math.max(androidBottomInset, 0),
-                    height: Platform.OS === "ios" ? 85 : 65 + androidBottomInset,
-                    ...Platform.select({
-                        ios: {
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.25,
-                            shadowRadius: 4,
-                        },
-                        android: {
-                            elevation: 10,
-                        },
-                    }),
-                },
-            }}
-        >
-            <Tabs.Screen
-                name="home"
-                options={{
-                    headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
+        <>
+            <Tabs
+                screenOptions={{
+                    tabBarShowLabel: false,
+                    tabBarStyle: {
+                        position: "absolute",
+                        left: 0,
+                        right: 0,
+                        bottom: -1,
+                        borderTopRightRadius: 45,
+                        borderTopLeftRadius: 45,
+                        borderTopColor: "transparent",
+                        backgroundColor: "#fff",
+                        paddingTop: 15,
+                        paddingHorizontal: 15,
+                        paddingBottom: Platform.OS === "ios" ? iosBottomPadding : Math.max(androidBottomInset, 0),
+                        height: Platform.OS === "ios" ? 85 : 65 + androidBottomInset,
+                        ...Platform.select({
+                            ios: {
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.25,
+                                shadowRadius: 4,
+                            },
+                            android: {
+                                elevation: 10,
+                            },
+                        }),
+                    },
                 }}
-            />
-            <Tabs.Screen
-                name="favourite"
-                options={{
-                    headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="favourite" focused={focused} />,
-                }}
-            />
-            <Tabs.Screen
-                name="book"
-                options={{
-                    headerTitle: "Book",
-                    tabBarIcon: ({ focused }) => (
-                        <TabIcon
-                            name="book"
-                            focused={focused}
-                            size={{
-                                active: { width: 56, height: 56, position: "absolute", bottom: 0 },
-                                inactive: { width: 56, height: 56, position: "absolute", bottom: 0 },
-                            }}
-                        />
-                    ),
-                }}
-            />
-            <Tabs.Screen
-                name="discount"
-                options={{
-                    headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="discount" focused={focused} />,
-                }}
-            />
-            <Tabs.Screen
-                name="settings"
-                options={{
-                    headerShown: false,
-                    tabBarIcon: ({ focused }) => <TabIcon name="settings" focused={focused} />,
-                }}
-            />
-        </Tabs>
+            >
+                <Tabs.Screen
+                    name="home"
+                    options={{
+                        headerShown: false,
+                        tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
+                    }}
+                />
+                <Tabs.Screen
+                    name="favourite"
+                    options={{
+                        headerShown: false,
+                        tabBarIcon: ({ focused }) => <TabIcon name="favourite" focused={focused} />,
+                    }}
+                />
+                <Tabs.Screen
+                    name="book"
+                    options={{
+                        headerTitle: "Book",
+                        tabBarIcon: ({ focused }) => (
+                            <TabIcon
+                                name="book"
+                                focused={focused}
+                                size={{
+                                    active: { width: 56, height: 56, position: "absolute", bottom: 0 },
+                                    inactive: { width: 56, height: 56, position: "absolute", bottom: 0 },
+                                }}
+                            />
+                        ),
+                    }}
+                />
+                <Tabs.Screen
+                    name="discount"
+                    options={{
+                        headerShown: false,
+                        tabBarIcon: ({ focused }) => <TabIcon name="discount" focused={focused} />,
+                    }}
+                />
+                <Tabs.Screen
+                    name="settings"
+                    options={{
+                        headerShown: false,
+                        tabBarIcon: ({ focused }) => <TabIcon name="settings" focused={focused} />,
+                    }}
+                />
+            </Tabs>
+            <KycModal />
+        </>
     );
 }
