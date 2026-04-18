@@ -116,7 +116,7 @@ export default function TabsLayout() {
             <Tabs.Screen
                 name="settings"
                 options={{
-                    headerTitle: "Settings",
+                    headerShown: false,
                     tabBarIcon: ({ focused }) => <TabIcon name="settings" focused={focused} />,
                 }}
             />

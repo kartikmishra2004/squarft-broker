@@ -82,7 +82,10 @@ export default function Home() {
               </View>
             </View>
             <View className="flex-row items-center gap-3">
-              <Pressable className="p-1">
+              <Pressable 
+                className="p-1"
+                onPress={() => router.push("/(screens)/wallet")}
+              >
                 <MaterialCommunityIcons name="wallet-outline" size={24} color="white" />
               </Pressable>
               <Pressable

@@ -4,6 +4,7 @@ import authSlice from './slices/authSlice';
 import requirementsSlice from './slices/requirementsSlice';
 import notificationSlice from './slices/notificationSlice';
 import myAddedSlice from './slices/myAddedSlice';
+import documentSlice from './slices/documentSlice';
 
 export const store = configureStore({
     reducer: {
@@ -12,5 +13,6 @@ export const store = configureStore({
         requirements: requirementsSlice,
         notifications: notificationSlice,
         myAdded: myAddedSlice,
+        documents: documentSlice,
     },
 });
