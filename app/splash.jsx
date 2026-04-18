@@ -1,14 +1,31 @@
 import { useEffect } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
+import { Asset } from "expo-asset";
 import SplashArtwork from "../assets/images/onboarding/splash.svg";
 
 export default function SplashScreen() {
     useEffect(() => {
+        async function preloadAssets() {
+            try {
+                await Asset.loadAsync([
+                    require("../assets/icons/app-icon.png"),
+                    require("../assets/images/onboarding/onboarding1.gif"),
+                    require("../assets/images/onboarding/onboarding2.gif"),
+                    require("../assets/images/onboarding/onboarding3.gif"),
+                ]);
+            } catch (err) {
+                console.log("Error preloading assets:", err);
+            }
+        }
+
+        preloadAssets();
+
         const timer = setTimeout(() => {
             router.replace("/(auth)/onboarding1");
-        }, 2000);
+        }, 3000);
 
         return () => clearTimeout(timer);
     }, []);
@@ -21,7 +38,7 @@ export default function SplashScreen() {
                 <Image
                     source={require("../assets/icons/app-icon.png")}
                     style={styles.logo}
-                    resizeMode="contain"
+                    contentFit="contain"
                 />
             </View>
 
