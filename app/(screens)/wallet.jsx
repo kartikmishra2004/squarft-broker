@@ -1,12 +1,29 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StatusBar, Platform } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import { View, Text, Pressable, ScrollView, StatusBar, TextInput, Alert } from 'react-native';
+import { useSelector, useDispatch } from 'react-redux';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { walletData } from '../../data/wallet';
+import { withdrawAmount } from '../../store/slices/walletSlice';
 
 const WalletScreen = () => {
     const router = useRouter();
+    const { withdraw } = useLocalSearchParams();
+    const dispatch = useDispatch();
+    const { balance, bankAccounts } = useSelector((state) => state.wallet);
+    
+    // States for view toggle and withdraw form
+    const [isWithdrawMode, setIsWithdrawMode] = useState(false);
+
+    useEffect(() => {
+        if (withdraw === 'true') {
+            setIsWithdrawMode(true);
+        }
+    }, [withdraw]);
+    const [amount, setAmount] = useState('');
+    const [selectedBankId, setSelectedBankId] = useState(null);
+
     const bottomSheetModalRef = useRef(null);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
 
@@ -19,27 +36,53 @@ const WalletScreen = () => {
 
     const renderBackdrop = useCallback(
         (props) => (
-            <BottomSheetBackdrop
-                {...props}
-                disappearsOnIndex={-1}
-                appearsOnIndex={0}
-                opacity={0.5}
-            />
+            <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
         ),
         []
     );
+
+    const handleWithdraw = () => {
+        if (!amount || isNaN(parseFloat(amount))) return;
+        if (parseFloat(amount) > balance) {
+            Alert.alert("Error", "Insufficient balance");
+            return;
+        }
+        if (!selectedBankId && bankAccounts.length > 0) {
+            Alert.alert("Error", "Please select a bank account");
+            return;
+        }
+        if (bankAccounts.length === 0) {
+            Alert.alert("Error", "Please add a bank account first");
+            return;
+        }
+
+        dispatch(withdrawAmount(amount));
+        setAmount('');
+        setIsWithdrawMode(false);
+        Alert.alert("Success", `₹${amount} withdrawal initiated successfully`);
+    };
+
+    const handleBack = () => {
+        if (isWithdrawMode) {
+            setIsWithdrawMode(false);
+        } else {
+            router.back();
+        }
+    };
 
     return (
         <View className="flex-1 bg-white">
             <StatusBar barStyle="light-content" />
 
             {/* Header Area */}
-            <View className="bg-[#4A43EC] pt-[55px] pb-12 px-6">
+            <View className={`bg-[#4A43EC] pt-[55px] ${isWithdrawMode ? 'pb-10' : 'pb-12'} px-6`}>
                 <View className="flex-row items-center justify-between">
-                    <Pressable onPress={() => router.back()} className="p-1">
+                    <Pressable onPress={handleBack} className="p-1">
                         <Ionicons name="arrow-back" size={24} color="white" />
                     </Pressable>
-                    <Text className="text-white text-[18px] font-lato-bold">My Wallet</Text>
+                    <Text className="text-white text-[18px] font-lato-bold">
+                        {isWithdrawMode ? 'Withdraw' : 'My Wallet'}
+                    </Text>
                     <View style={{ width: 32 }} />
                 </View>
 
@@ -58,59 +101,126 @@ const WalletScreen = () => {
                     }}
                 >
                     <Text className="text-blue-100 text-center text-[11px] font-manrope-medium mb-0.5">Main balance</Text>
-                    <Text className="text-white text-center text-[26px] font-manrope-extrabold mb-5">₹{walletData.balance}</Text>
+                    <Text className="text-white text-center text-[26px] font-manrope-extrabold mb-5">
+                        ₹{balance?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </Text>
 
-                    <View className="flex-row justify-between items-center px-4">
-                        <Pressable className="items-center flex-1">
-                            <View className="mb-1">
-                                <MaterialCommunityIcons name="tray-arrow-down" size={18} color="white" />
-                            </View>
-                            <Text className="text-white text-[9px] font-manrope-medium">Withdraw</Text>
-                        </Pressable>
+                    {!isWithdrawMode && (
+                        <View className="flex-row justify-between items-center px-4">
+                            <Pressable 
+                                onPress={() => setIsWithdrawMode(true)}
+                                className="items-center flex-1"
+                            >
+                                <View className="mb-1">
+                                    <MaterialCommunityIcons name="tray-arrow-down" size={18} color="white" />
+                                </View>
+                                <Text className="text-white text-[9px] font-manrope-medium">Withdraw</Text>
+                            </Pressable>
 
-                        <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.2)', height: 24 }} />
+                            <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.2)', height: 24 }} />
 
-                        <Pressable
-                            onPress={() => router.push("/(screens)/transactions")}
-                            className="items-center flex-1"
-                        >
-                            <View className="mb-1">
-                                <MaterialCommunityIcons name="history" size={18} color="white" />
-                            </View>
-                            <Text className="text-white text-[9px] font-manrope-medium">Transactions</Text>
-                        </Pressable>
-                    </View>
+                            <Pressable
+                                onPress={() => router.push("/(screens)/transactions")}
+                                className="items-center flex-1"
+                            >
+                                <View className="mb-1">
+                                    <MaterialCommunityIcons name="history" size={18} color="white" />
+                                </View>
+                                <Text className="text-white text-[9px] font-manrope-medium">Transactions</Text>
+                            </Pressable>
+                        </View>
+                    )}
                 </View>
             </View>
 
             {/* Content Area */}
-            <View className="flex-1 px-6 pt-6">
-                <View className="flex-row items-center justify-between mb-3">
-                    <Text className="text-[14px] font-manrope-extrabold text-[#272727]">Latest Transactions</Text>
-                    <Pressable onPress={() => router.push("/(screens)/transactions")}>
-                        <Text className="text-[10px] text-gray-400 font-manrope-medium">View all</Text>
-                    </Pressable>
-                </View>
-
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-                    {walletData.transactions.slice(0, 7).map((item) => (
-                        <Pressable
-                            key={item.id}
-                            onPress={() => handlePresentModalPress(item)}
-                            className="flex-row items-center justify-between py-3 border-b border-gray-100"
-                        >
-                            <View>
-                                <Text className="text-[13px] font-manrope-bold text-[#272727]">{item.title}</Text>
-                                <Text className="text-[9px] text-gray-400 font-manrope-medium mt-1">{item.date}</Text>
-                            </View>
-                            <View className="flex-row items-center">
-                                <Text className="text-[#22C55E] text-[13px] font-manrope-bold mr-2">{item.amount}</Text>
-                                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-                            </View>
+            {!isWithdrawMode ? (
+                <View className="flex-1 px-6 pt-6">
+                    <View className="flex-row items-center justify-between mb-3">
+                        <Text className="text-[14px] font-manrope-extrabold text-[#272727]">Latest Transactions</Text>
+                        <Pressable onPress={() => router.push("/(screens)/transactions")}>
+                            <Text className="text-[10px] text-gray-400 font-manrope-medium">View all</Text>
                         </Pressable>
-                    ))}
+                    </View>
+
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                        {walletData.transactions.slice(0, 7).map((item) => (
+                            <Pressable
+                                key={item.id}
+                                onPress={() => handlePresentModalPress(item)}
+                                className="flex-row items-center justify-between py-3 border-b border-gray-100"
+                            >
+                                <View>
+                                    <Text className="text-[13px] font-manrope-bold text-[#272727]">{item.title}</Text>
+                                    <Text className="text-[9px] text-gray-400 font-manrope-medium mt-1">{item.date}</Text>
+                                </View>
+                                <View className="flex-row items-center">
+                                    <Text className="text-[#22C55E] text-[13px] font-manrope-bold mr-2">{item.amount}</Text>
+                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                                </View>
+                            </Pressable>
+                        ))}
+                    </ScrollView>
+                </View>
+            ) : (
+                <ScrollView className="flex-1 px-6 pt-8" showsVerticalScrollIndicator={false}>
+                    <Text className="text-[14px] font-manrope-bold text-[#272727] mb-3">Enter amount</Text>
+                    <View className="flex-row items-center border border-gray-100 rounded-xl px-4 py-3.5 mb-8">
+                        <Text className="text-gray-400 text-[15px] font-manrope-medium mr-2">₹</Text>
+                        <TextInput
+                            className="flex-1 text-[15px] font-manrope-bold text-[#272727]"
+                            placeholder="00.00"
+                            placeholderTextColor="#9CA3AF"
+                            keyboardType="numeric"
+                            value={amount}
+                            onChangeText={setAmount}
+                        />
+                    </View>
+
+                    <Text className="text-[14px] font-manrope-bold text-[#272727] mb-3">Send wallet amount to</Text>
+                    
+                    {bankAccounts.length > 0 ? (
+                        bankAccounts.map((bank) => (
+                            <Pressable
+                                key={bank.id}
+                                onPress={() => setSelectedBankId(bank.id)}
+                                className={`flex-row items-center bg-white border ${selectedBankId === bank.id ? 'border-[#4A43EC]' : 'border-gray-100'} rounded-xl p-4 mb-4`}
+                            >
+                                <View className="w-10 h-10 bg-[#EBF1FF] rounded-lg items-center justify-center mr-3">
+                                    <MaterialCommunityIcons name="bank" size={20} color="#4A43EC" />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-[13px] font-manrope-bold text-[#272727]">{bank.bankName}</Text>
+                                    <Text className="text-[10px] text-gray-400 font-manrope-medium mt-0.5">XXXXXXXX{bank.accountNumber?.slice(-4)}</Text>
+                                </View>
+                                <View className={`w-5 h-5 rounded-full border items-center justify-center ${selectedBankId === bank.id ? 'border-[#4A43EC]' : 'border-gray-300'}`}>
+                                    {selectedBankId === bank.id && <View className="w-2.5 h-2.5 rounded-full bg-[#4A43EC]" />}
+                                </View>
+                            </Pressable>
+                        ))
+                    ) : (
+                        <View className="bg-gray-50 rounded-xl p-8 items-center justify-center mb-6 border border-dashed border-gray-200">
+                            <Text className="text-gray-400 text-[12px] font-manrope-medium">No bank account added yet</Text>
+                        </View>
+                    )}
+
+                    <Pressable
+                        onPress={() => router.push("/(screens)/add-bank")}
+                        className="bg-[#EBF1FF] py-4 rounded-xl items-center justify-center"
+                    >
+                        <Text className="text-[#4A43EC] text-[14px] font-manrope-bold">+ Add Bank Account</Text>
+                    </Pressable>
+                    
+                    {amount !== '' && (
+                        <Pressable
+                            onPress={handleWithdraw}
+                            className="bg-[#4A43EC] py-4 rounded-xl items-center justify-center mt-8 mb-10"
+                        >
+                            <Text className="text-white text-[16px] font-manrope-bold">Withdraw Now</Text>
+                        </Pressable>
+                    )}
                 </ScrollView>
-            </View>
+            )}
 
             {/* Bottom Sheet Modal */}
             <BottomSheetModal

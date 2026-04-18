@@ -1,5 +1,6 @@
-import { View, Text, FlatList, TextInput, TouchableOpacity, Image, Modal } from "react-native";
+import { View, Text, FlatList, TextInput, TouchableOpacity, Image, Modal, StatusBar, Platform } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useState } from "react";
@@ -76,7 +77,9 @@ function PropertyCard({ item, onDeletePress }) {
 export default function Favourite() {
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
+    const router = useRouter();
     const properties = useSelector((state) => state.myAdded.list);
+    const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
     const [search, setSearch] = useState("");
     const [deleteId, setDeleteId] = useState(null);
 
@@ -91,32 +94,39 @@ export default function Favourite() {
     };
 
     return (
-        <View className="flex-1 bg-[#FFF]" style={{ paddingTop: insets.top }}>
+        <View className="flex-1 bg-white">
+            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
             {/* Header */}
-            <View className="flex-row items-center justify-between px-4 py-3">
-                <TouchableOpacity className="w-9 h-9 rounded-xl items-center justify-center">
-                    <Ionicons name="arrow-back" size={26} color="#333" />
-                </TouchableOpacity>
-                <Text className="text-[17px] font-lato-bold text-[#1a1a1a]">My Added</Text>
-                <TouchableOpacity className="w-9 h-9 rounded-xl items-center justify-center">
-                    <Ionicons name="notifications" size={22} color="#333" />
+            <View className="flex-row items-center justify-between px-5 pb-3" style={{ paddingTop: insets.top + 8 }}>
+                <View />
+                <Text className="text-[16px] text-black font-lato-bold ml-8">My Added</Text>
+                <TouchableOpacity
+                    className="p-1 relative"
+                    onPress={() => router.push("/notifications")}
+                >
+                    <Ionicons name="notifications" size={22} color="black" />
+                    {unwatchedCount > 0 ? (
+                        <View className="absolute top-0 right-0 bg-[#FF3B30] min-w-[14px] h-[14px] rounded-full items-center justify-center border border-white">
+                            <Text className="text-white text-[8px] font-manrope-bold">{unwatchedCount}</Text>
+                        </View>
+                    ) : null}
                 </TouchableOpacity>
             </View>
 
             {/* Search */}
-            <View className="flex-row items-center px-4 mt-4 mb-3 gap-1.5 h-[42px]">
-                <View className="flex-1 flex-row items-center bg-[#EBF1FF]/70 rounded-xl px-3">
-                    <Ionicons name="search-outline" size={18} color="#aaa" />
+            <View className="flex-row px-5 mt-3 gap-2.5">
+                <View className="flex-1 flex-row items-center bg-[#EBF1FF] rounded-xl px-3.5 h-[44px]">
+                    <Ionicons name="search" size={18} color="#9CA3AF" />
                     <TextInput
+                        className="flex-1 text-[13px] text-black ml-2 font-lato-regular"
                         placeholder="Search"
-                        placeholderTextColor="#aaa"
+                        placeholderTextColor="#9CA3AF"
                         value={search}
                         onChangeText={setSearch}
-                        className="flex-1 ml-1.5 text-[14px] text-[#333]"
                     />
                 </View>
-                <TouchableOpacity className="w-[42px] rounded-xl bg-[#EEF0FF]/70 items-center justify-center h-[42px]">
-                    <Ionicons name="options-outline" size={20} color="#4F46E5" />
+                <TouchableOpacity className="w-[44px] h-[44px] bg-[#EBF1FF] rounded-xl items-center justify-center">
+                    <MaterialCommunityIcons name="filter-variant" size={22} color="#4A43EC" />
                 </TouchableOpacity>
             </View>
 
