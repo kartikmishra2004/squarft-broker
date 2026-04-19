@@ -120,10 +120,6 @@ export default function CustomerRequirement() {
                 {/* Info Row */}
                 <View className="flex-row justify-between mb-3">
                   <View className="flex-row items-center">
-                    <MaterialCommunityIcons name="home-outline" size={16} color="#4A43EC" />
-                    <Text className="ml-1 text-[10px] text-[#4A43EC] font-lato-bold">{req.type}</Text>
-                  </View>
-                  <View className="flex-row items-center">
                     <MaterialCommunityIcons name="office-building-marker-outline" size={16} color="#4A43EC" />
                     <Text className="ml-1 text-[10px] text-[#4A43EC] font-lato-bold">{req.category}</Text>
                   </View>
@@ -132,6 +128,7 @@ export default function CustomerRequirement() {
                     <Text className="ml-1 text-[10px] text-[#4A43EC] font-lato-bold">{req.rooms}</Text>
                   </View>
                 </View>
+
 
                 {/* Budget Box */}
                 <View className="bg-[#F8F9FE] rounded-lg p-3 flex-row items-center mb-3">

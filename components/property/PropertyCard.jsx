@@ -34,9 +34,19 @@ const PropertyCard = ({ item, propertyTypeLabel }) => {
             </View>
 
             <View className="px-1 py-2.5">
+                <View className="flex-row justify-between items-center mb-1">
+                    <View className="px-2 py-0.5 rounded-xl border border-[#E0E7FF]">
+                        <Text className="text-[10px] text-[#4A43EC] font-lato-medium">{item.category}</Text>
+                    </View>
+                    <Text className="text-sm text-[#4A43EC] font-lato-bold">
+                        ₹{item.price}
+                    </Text>
+                </View>
+
                 <Text className="text-[13px] font-lato-bold text-[#1F2937] mb-1" numberOfLines={1}>
-                    {propertyTypeLabel} {item.category}
+                    {propertyTypeLabel} {item.title}
                 </Text>
+
 
                 <View className="flex-row items-center mb-1">
                     <Ionicons name="location" size={13} color="#FF7B54" />

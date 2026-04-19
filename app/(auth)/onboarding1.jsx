@@ -1,19 +1,25 @@
-import { Text, View } from "react-native";
+import { Text, View, Dimensions } from "react-native";
 import { Image } from "expo-image";
 import { StatusBar } from "expo-status-bar";
 import { Link } from 'expo-router';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Onboarding1() {
+    const insets = useSafeAreaInsets();
     return (
         <View className="flex-1 bg-white">
             <StatusBar style="dark" />
-            <View className="absolute top-16 right-5 z-10">
+            <View 
+                style={{ top: Math.max(insets.top, 20), right: 20, zIndex: 50 }}
+                className="absolute"
+            >
                 <Link href="/login">
-                    <View className="bg-[#4A43EC] px-5 py-1.5 rounded-full">
-                        <Text className="text-white text-[15px] font-light">Skip</Text>
+                    <View className="bg-[#4A43EC] px-5 py-1.5 rounded-full shadow-sm">
+                        <Text className="text-white text-[15px] font-medium">Skip</Text>
                     </View>
                 </Link>
             </View>
+
             <View className="pt-32 px-7">
                 <Text className="text-[18px] text-black/60 font-normal mb-2.5">
                     Smarter Way to Sell Your Property
@@ -29,14 +35,15 @@ export default function Onboarding1() {
                     <View className="w-12 h-[5px] bg-[#D0CFEF]" />
                     <View className="w-12 h-[5px] rounded-r-full bg-[#D0CFEF]" />
                 </View>
-                <Link href="/onboarding2">
-                    <View className="bg-[#4A43EC] rounded-2xl py-5 items-center w-[55%]">
+                <Link href="/onboarding2" style={{ zIndex: 50 }}>
+                    <View className="bg-[#4A43EC] rounded-2xl py-5 items-center w-[55%] shadow-md">
                         <Text className="text-white text-[16px] font-semibold tracking-widest">
                             NEXT
                         </Text>
                     </View>
                 </Link>
             </View>
+
             <View
                 className="absolute bottom-0 left-0 right-0 h-[48%] z-10"
                 style={{

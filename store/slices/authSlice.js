@@ -13,7 +13,7 @@ const authSlice = createSlice({
         otpFlow: 'register',
         rememberMe: false,
         isLoggedIn: false,
-        isKycCompleted: false,
+        isKycCompleted: true,
     },
     reducers: {
         setName: (state, action) => { state.name = action.payload; },

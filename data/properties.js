@@ -1,50 +1,18 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+const commonCategories = [
+  { id: "house", name: "House", icon: "home-outline", library: MaterialCommunityIcons },
+  { id: "plots", name: "Plots", icon: "home-city-outline", library: MaterialCommunityIcons },
+  { id: "lands", name: "Lands", icon: "map-outline", library: MaterialCommunityIcons },
+  { id: "warehouse", name: "Warehouse", icon: "warehouse", library: MaterialCommunityIcons },
+  { id: "flats", name: "Flats", icon: "office-building-outline", library: MaterialCommunityIcons },
+  { id: "store", name: "Store", icon: "store-outline", library: MaterialCommunityIcons },
+];
+
+
 export const categoriesData = {
-  SELL: {
-    Residential: [
-      { name: "Apartment", icon: "office-building-outline", library: MaterialCommunityIcons },
-      { name: "Builder Floor", icon: "layers-outline", library: MaterialCommunityIcons },
-      { name: "House/Villa", icon: "home-outline", library: MaterialCommunityIcons },
-      { name: "Plot", icon: "home-city-outline", library: MaterialCommunityIcons },
-      { name: "Other", icon: "dots-horizontal", library: MaterialCommunityIcons },
-    ],
-    Commercial: [
-      { name: "Plot", icon: "home-city-outline", library: MaterialCommunityIcons },
-      { name: "Office", icon: "briefcase-outline", library: MaterialCommunityIcons },
-      { name: "Shop", icon: "store-outline", library: MaterialCommunityIcons },
-      { name: "Storage", icon: "warehouse", library: MaterialCommunityIcons },
-      { name: "Industry", icon: "factory", library: MaterialCommunityIcons },
-      { name: "Hospitality", icon: "silverware-fork-knife", library: MaterialCommunityIcons },
-      { name: "Other", icon: "dots-horizontal", library: MaterialCommunityIcons },
-    ],
-    Agriculture: [
-      { name: "Land", icon: "tent", library: MaterialCommunityIcons },
-      { name: "Farmhouse", icon: "home-outline", library: MaterialCommunityIcons },
-    ],
-  },
-  RENT: {
-    Residential: [
-      { name: "Apartment", icon: "office-building-outline", library: MaterialCommunityIcons },
-      { name: "Builder Floor", icon: "layers-outline", library: MaterialCommunityIcons },
-      { name: "House/Villa", icon: "home-outline", library: MaterialCommunityIcons },
-      { name: "Plot", icon: "home-city-outline", library: MaterialCommunityIcons },
-      { name: "Other", icon: "dots-horizontal", library: MaterialCommunityIcons },
-    ],
-    Commercial: [
-      { name: "Plot", icon: "home-city-outline", library: MaterialCommunityIcons },
-      { name: "Office", icon: "briefcase-outline", library: MaterialCommunityIcons },
-      { name: "Shop", icon: "store-outline", library: MaterialCommunityIcons },
-      { name: "Storage", icon: "warehouse", library: MaterialCommunityIcons },
-      { name: "Industry", icon: "factory", library: MaterialCommunityIcons },
-      { name: "Hospitality", icon: "silverware-fork-knife", library: MaterialCommunityIcons },
-      { name: "Other", icon: "dots-horizontal", library: MaterialCommunityIcons },
-    ],
-    Agriculture: [
-      { name: "Land", icon: "tent", library: MaterialCommunityIcons },
-      { name: "Farmhouse", icon: "home-outline", library: MaterialCommunityIcons },
-    ],
-  }
+  SELL: commonCategories,
+  RENT: commonCategories,
 };
 
 export const upcomingProjectsData = [
@@ -56,7 +24,6 @@ export const upcomingProjectsData = [
     price: "₹35.00 L - 2.5 Cr",
     image: require("../assets/images/home/hero.png"),
     type: "SELL",
-    subType: "Residential"
   },
   {
     id: 2,
@@ -66,6 +33,6 @@ export const upcomingProjectsData = [
     price: "₹1.2 Cr - 5 Cr",
     image: require("../assets/images/home/hero.png"),
     type: "SELL",
-    subType: "Agriculture"
   },
 ];
+

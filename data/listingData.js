@@ -97,4 +97,16 @@ export const propertiesByRoomType = {
     { id: "b5_7", title: "Legacy Tower", category: "Apartment", price: 90000, status: "rejected", views: 45, location: "Indore", date: "26/12/25", image: img2, facility: "Semi-Furnished", areaSqft: 4000, beds: 4, baths: 4 },
     { id: "b5_8", title: "Royal Wing", category: "Penthouse", price: 165000, status: "approved", views: 600, location: "Nipania, Indore", date: "27/12/25", image: img1, facility: "Furnished", areaSqft: 5800, beds: 5, baths: 5 },
   ],
+  "plots": [
+    { id: "p1", title: "Residental Plot", category: "Plot", price: 15500, status: "approved", views: 245, location: "Vijay Nagar, Indore", date: "12/12/25", image: img2, areaSqft: 1000 },
+  ],
+  "lands": [
+    { id: "l1", title: "Agriculture Land", category: "Land", price: 5500, status: "approved", views: 120, location: "Vijay Nagar, Indore", date: "10/12/25", image: img1, areaSqft: 5000 },
+  ],
+  "warehouse": [
+    { id: "w1", title: "Industrial Warehouse", category: "Storage", price: 22000, status: "approved", views: 450, location: "Nipania, Indore", date: "10/12/25", image: img2, areaSqft: 3500 },
+  ],
+  "store": [
+    { id: "s1", title: "Retail Store", category: "Shop", price: 8500, status: "approved", views: 89, location: "Vijay Nagar, Indore", date: "16/12/25", image: img1, areaSqft: 600 },
+  ],
 };

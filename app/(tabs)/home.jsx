@@ -26,16 +26,16 @@ const stats = [
 
 const mainTabs = ["SELL", "RENT"];
 const buyFilter = "BUY";
-const subTabs = ["Residential", "Commercial", "Agriculture"];
+
 
 export default function Home() {
   const [activeFilter, setActiveFilter] = useState("SELL");
-  const [activeSubTab, setActiveSubTab] = useState("Residential");
   const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
 
   const categories = useMemo(() => {
-    return categoriesData[activeFilter]?.[activeSubTab] || [];
-  }, [activeFilter, activeSubTab]);
+    return categoriesData[activeFilter] || [];
+  }, [activeFilter]);
+
 
   const projects = useMemo(() => {
     return upcomingProjectsData;
@@ -149,25 +149,8 @@ export default function Home() {
         </View>
 
         <View className="px-[10px] pt-[15px]">
-          {/* Sub Tabs */}
-          <View className="flex-row justify-center mb-5 gap-4">
-            {subTabs.map((st) => {
-              const isActive = activeSubTab === st;
-              return (
-                <Pressable
-                  key={st}
-                  onPress={() => setActiveSubTab(st)}
-                  className={`px-[18px] py-2 rounded-[25px] ${isActive ? 'bg-[#4A43EC]' : 'bg-[#F3F4F6]'}`}
-                >
-                  <Text className={`text-[13px] font-lato-semibold ${isActive ? 'text-white' : 'text-gray-500'}`}>
-                    {st}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-
           {/* Hero Banner */}
+
           <Pressable className="w-full h-[170px] rounded-[20px] overflow-hidden mb-6">
             <Image
               source={require("../../assets/images/home/hero.png")}
@@ -182,9 +165,17 @@ export default function Home() {
               <Pressable
                 key={index}
                 style={{ width: (width - 70) / 3 }}
-                  onPress={() => router.push("/property-type")}
+                onPress={() => {
+                  if (cat.id === "house" || cat.id === "flats") {
+                    router.push("/property-type");
+                  } else {
+                    router.push({ pathname: "/property-type", params: { typeId: cat.id } });
+                  }
+                }}
                 className="bg-[#F4F7FF] rounded-[18px] py-[15px] items-center space-y-2"
               >
+
+
                 <View className="w-10 h-10 justify-center items-center">
                   <cat.library name={cat.icon} size={28} color="#4A43EC" />
                 </View>

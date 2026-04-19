@@ -70,9 +70,15 @@ export default function PropertyType() {
     setView("list");
   };
 
-  const currentTypeLabel = useMemo(() =>
-    propertyTypes.find(t => t.id === selectedTypeId)?.label || 'Listing'
-    , [selectedTypeId]);
+  const currentTypeLabel = useMemo(() => {
+    const predefined = propertyTypes.find(t => t.id === selectedTypeId);
+    if (predefined) return predefined.label;
+    if (!selectedTypeId) return 'Listing';
+    // Handle plots, lands, etc. and also formats like "1bhk" if needed
+    return selectedTypeId.replace(/(\d+)([a-z]+)/i, '$1 $2').charAt(0).toUpperCase() + selectedTypeId.slice(1).replace(/(\d+)([a-z]+)/i, '$1 $2');
+  }, [selectedTypeId]);
+
+
 
   const rawList = selectedTypeId ? (propertiesByRoomType[selectedTypeId] || []) : [];
   const statusFiltered = rawList.filter(p => p.status?.toLowerCase() === statusFilter?.toLowerCase());
@@ -196,20 +202,22 @@ export default function PropertyType() {
               <View className="h-10 justify-center">
                 <Slider
                   style={{ width: '100%', height: 40 }}
-                  minimumValue={4000}
-                  maximumValue={20000}
+                  minimumValue={0}
+                  maximumValue={200000}
+
                   step={1000}
-                  value={tempPriceRange || 20000}
+                  value={tempPriceRange || 200000}
                   onValueChange={setTempPriceRange}
                   minimumTrackTintColor="#4A43EC"
                   maximumTrackTintColor="#EBF1FF"
                   thumbTintColor="#4A43EC"
                 />
               </View>
-              <View className="flex-row justify-between mt-2">{[4000, 8000, 12000, 16000, 20000].map(val => (
+              <View className="flex-row justify-between mt-2">{[4000, 50000, 100000, 150000, 200000].map(val => (
                 <Text key={val} className="text-[9px] text-gray-400 font-lato-medium">₹{val}</Text>
               ))}</View>
             </View>
+
 
             <View className="mb-10">
               <Text className="text-[14px] font-lato-bold mb-4">Facilities</Text>
@@ -217,7 +225,8 @@ export default function PropertyType() {
                 {['Furnished', 'Semi-Furnished', 'Unfurnished'].map(fac => (
                   <Pressable
                     key={fac}
-                    onPress={() => setTempFacilityFilter(fac)}
+                    onPress={() => setTempFacilityFilter(prev => prev === fac ? null : fac)}
+
                     className={`px-4 py-2.5 rounded-lg border flex-1 items-center justify-center ${tempFacilityFilter === fac ? 'bg-[#4A43EC] border-[#4A43EC]' : 'bg-white border-blue-200'}`}
                   ><Text className={`text-[10px] font-lato-medium whitespace-nowrap ${tempFacilityFilter === fac ? 'text-white' : 'text-[#4A43EC]'}`}>{fac}</Text></Pressable>
                 ))}
@@ -283,8 +292,9 @@ export default function PropertyType() {
         </View>
 
         <View className="px-5 mt-8 mb-4">
-          <Text className="text-sm text-black font-lato-bold tracking-wider">HOUSES TYPE</Text>
+          <Text className="text-sm text-black font-lato-bold tracking-wider">PROPERTY TYPES</Text>
         </View>
+
 
         <View className="flex-row flex-wrap px-4">{propertyTypes.map((item) => (
           <CategoryTile key={item.id} item={item} onPress={handleTypePress} />
@@ -295,6 +305,8 @@ export default function PropertyType() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-1" contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}>{(propertiesByRoomType["1bhk"] || []).slice(0, 3).map((item) => (
+
+
           <Pressable
             key={item.id}
             onPress={() => router.push({ pathname: "/property-detail", params: { id: item.id } })}

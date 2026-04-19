@@ -22,8 +22,7 @@ import { addRequirement, updateRequirement } from "../../store/slices/requiremen
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const PropertyRequirements = ["Buy", "Rent/Lease", "Paying Guest"];
-const PropertyKinds = ["Residential", "Commercial", "Agriculture"];
-const PropertyTypes = ["APARTMENT/FLATS", "BUILDER FLOOR", "HOUSE/ VILLA", "PLOT", "OTHER."];
+const PropertyTypes = ["House", "Plots", "Lands", "Warehouse", "Flats", "Store"];
 const Units = [
   "Square Feet (Sq. ft)",
   "Square Meter (Sq. m)",
@@ -57,8 +56,7 @@ export default function AddCustomerRequirement() {
 
   const [form, setForm] = useState({
     status: "Buy",
-    type: "Residential",
-    category: "APARTMENT/FLATS",
+    category: "House",
     minArea: "",
     maxArea: "2000",
     unit: "Square Feet (Sq. ft)",
@@ -83,8 +81,7 @@ export default function AddCustomerRequirement() {
     if (isEdit && existingReq) {
       setForm({
         status: existingReq.status || "Buy",
-        type: existingReq.type || "Residential",
-        category: existingReq.category || "APARTMENT/FLATS",
+        category: existingReq.category || "House",
         minArea: existingReq.minArea === "null" ? "" : existingReq.minArea,
         maxArea: existingReq.maxArea || "2000",
         unit: existingReq.unit || "Square Feet (Sq. ft)",
@@ -188,7 +185,6 @@ export default function AddCustomerRequirement() {
     const payload = {
       name: form.name,
       status: form.status,
-      type: form.type,
       category: form.category,
       rooms: form.rooms,
       budgetRange: `${formatCurrency(form.budgetMin)} - ${formatCurrency(form.budgetMax)}`,
@@ -264,19 +260,6 @@ export default function AddCustomerRequirement() {
             ))}
           </View>
 
-          {/* Kind of property */}
-          <Text className="text-sm font-lato-bold mb-3">What kind of property?</Text>
-          <View className="flex-row flex-wrap mb-5">
-            {PropertyKinds.map((item) => (
-              <Chip
-                key={item}
-                label={item}
-                selected={form.type === item}
-                onPress={() => setForm({ ...form, type: item })}
-              />
-            ))}
-          </View>
-
           {/* Property Type */}
           <Text className="text-sm font-lato-bold mb-3">Property Type</Text>
           <View className="flex-row flex-wrap mb-5">
@@ -289,6 +272,7 @@ export default function AddCustomerRequirement() {
               />
             ))}
           </View>
+
 
           {/* Area Requirement */}
           <Text className="text-sm font-lato-bold mb-3">Area Requirement</Text>
