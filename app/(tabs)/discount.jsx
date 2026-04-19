@@ -14,7 +14,7 @@ const DUMMY_DATA = [
 function CommissionCard({ item }) {
     const isPaid = item.status === "Paid";
     return (
-        <View className="bg-white rounded-2xl mb-4 px-4 py-4" style={{ elevation: 3, shadowColor: "#6B7280", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.15, shadowRadius: 6 }}>
+        <View className="bg-white rounded-2xl mb-4 px-4 py-4 border border-1.5 border-[#E5E7EB]" >
             <View className="flex-row items-start justify-between mb-1">
                 <Text className="text-[15px] font-lato-bold text-[#1a1a1a] flex-1 mr-2" numberOfLines={1}>{item.title}</Text>
                 <View className={`px-5 py-0.5 rounded-full ${isPaid ? "bg-[#1E9500]" : "bg-[#FFC107]"}`}>
@@ -70,7 +70,7 @@ export default function Discount() {
             </View>
 
             {/* Search */}
-            <View className="flex-row px-5 mt-3 gap-2.5">
+            <View className="flex-row px-5 mt-3 gap-2.5 mb-5">
                 <View className="flex-1 flex-row items-center bg-[#EBF1FF] rounded-xl px-3.5 h-[44px]">
                     <Ionicons name="search" size={18} color="#9CA3AF" />
                     <TextInput
@@ -91,7 +91,7 @@ export default function Discount() {
                 data={filtered}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => <CommissionCard item={item} />}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 10 }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140, paddingTop: 10 }}
                 showsVerticalScrollIndicator={false}
             />
         </View>

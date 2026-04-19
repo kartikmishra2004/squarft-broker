@@ -10,7 +10,7 @@ function PropertyCard({ item, onDeletePress }) {
     const [menuOpen, setMenuOpen] = useState(false);
 
     return (
-        <View className="flex-row bg-white rounded-[20px] mb-4 p-4 items-start" style={{ elevation: 4, shadowColor: "#6B7280", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.20, shadowRadius: 8 }}>
+        <View className="flex-row bg-white border border-[#E5E7EB] rounded-[20px] mb-4 p-3 items-start" >
             <Image source={item.image} className="w-[108px] h-[105px] rounded-2xl" resizeMode="cover" />
             <View className="flex-1 ml-2.5">
                 <View className="flex-row items-center mb-0.5">
@@ -114,7 +114,7 @@ export default function Favourite() {
             </View>
 
             {/* Search */}
-            <View className="flex-row px-5 mt-3 gap-2.5">
+            <View className="flex-row px-5 mt-3 gap-2.5 mb-5">
                 <View className="flex-1 flex-row items-center bg-[#EBF1FF] rounded-xl px-3.5 h-[44px]">
                     <Ionicons name="search" size={18} color="#9CA3AF" />
                     <TextInput
@@ -135,7 +135,7 @@ export default function Favourite() {
                 data={filtered}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => <PropertyCard item={item} onDeletePress={setDeleteId} />}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 10 }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 150, paddingTop: 10 }}
                 showsVerticalScrollIndicator={false}
             />
 
