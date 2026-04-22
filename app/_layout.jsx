@@ -2,7 +2,7 @@ import { Stack } from "expo-router";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { Platform } from "react-native";
+import { Platform, useColorScheme } from "react-native";
 import * as NavigationBar from "expo-navigation-bar";
 import { Provider } from 'react-redux';
 import "../global.css";
@@ -32,6 +32,7 @@ import {
 SplashScreen.preventAutoHideAsync();
 
 export default function AuthLayout() {
+    const colorScheme = useColorScheme();
     const [fontsLoaded] = useFonts({
         'Lato-Regular': Lato_400Regular,
         'Lato-Bold': Lato_700Bold,
@@ -53,7 +54,7 @@ export default function AuthLayout() {
 
         NavigationBar.setBackgroundColorAsync("#ffffff").catch(() => { });
         NavigationBar.setButtonStyleAsync("dark").catch(() => { });
-    }, []);
+    }, [colorScheme]);
 
     useEffect(() => {
         if (fontsLoaded) SplashScreen.hideAsync();
