@@ -166,7 +166,7 @@ export default function PropertyType() {
             </View>
           </View>
 
-          <View className="flex-row flex-wrap px-4 justify-between">{currentProperties.filtered.map((item) => (
+          <View className="flex-row flex-wrap px-2.5 justify-between">{currentProperties.filtered.map((item) => (
             <PropertyCard key={item.id} item={item} propertyTypeLabel={currentTypeLabel} />
           ))}{currentProperties.filtered.length === 0 && (
             <View className="w-full items-center mt-20 px-8">
@@ -292,16 +292,16 @@ export default function PropertyType() {
         </View>
 
         <View className="px-5 mt-8 mb-4">
-          <Text className="text-sm text-black font-lato-bold tracking-wider">PROPERTY TYPES</Text>
+          <Text className="text-[15px] text-black font-lato-bold tracking-wider">PROPERTY TYPES</Text>
         </View>
 
 
-        <View className="flex-row flex-wrap px-4">{propertyTypes.map((item) => (
+        <View className="flex-row flex-wrap justify-between mb-[30px] px-5">{propertyTypes.map((item) => (
           <CategoryTile key={item.id} item={item} onPress={handleTypePress} />
         ))}</View>
 
-        <View className="px-5 mb-4 mt-4">
-          <Text className="text-sm text-black font-lato-bold tracking-wider">RECENT ADDED</Text>
+        <View className="px-5 mb-4">
+          <Text className="text-[15px] text-black font-lato-bold tracking-wider">RECENT ADDED</Text>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-1" contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}>{(propertiesByRoomType["1bhk"] || []).slice(0, 3).map((item) => (
@@ -310,26 +310,25 @@ export default function PropertyType() {
           <Pressable
             key={item.id}
             onPress={() => router.push({ pathname: "/property-detail", params: { id: item.id } })}
-            className="w-[220px] bg-white rounded-[24px] mr-4 border border-gray-100 overflow-hidden shadow-sm mb-4"
-            style={{ elevation: 3 }}
+            className="w-[220px] bg-white rounded-[16px] mr-4 border border-gray-200 overflow-hidden shadow-sm mb-4"
           >
 
             <Image source={item.image} className="w-full h-44" />
-            <View className="p-3">
+            <View className="p-4">
               <View className="flex-row justify-between items-center mb-2">
                 <View className="px-2 py-0.5 rounded-xl border border-[#E0E7FF]">
                   <Text className="text-[10px] text-[#4A43EC] font-lato-medium">{item.category}</Text>
                 </View>
-                <Text className="text-sm text-[#4A43EC] font-lato-bold">
-                  ₹{item.price}<Text className="text-[10px]">/m</Text>
+                <Text className="text-[15px] text-[#4A43EC] font-lato-bold">
+                  ₹{item.price}<Text className="text-[11px]">/m</Text>
                 </Text>
               </View>
-              <Text className="text-[14px] text-[#1F2937] font-lato-bold mb-1" numberOfLines={1}>
+              <Text className="text-[15px] text-[#1F2937] font-manrope-extrabold mb-2" numberOfLines={1}>
                 {item.title}
               </Text>
               <View className="flex-row items-center gap-1">
                 <Ionicons name="location" size={13} color="#FF7B54" />
-                <Text className="text-[10px] text-[#6B7280] font-lato-medium" numberOfLines={1}>
+                <Text className="text-[12px] text-[#6B7280] font-lato-medium" numberOfLines={1}>
                   {item.location}
                 </Text>
               </View>
@@ -339,24 +338,24 @@ export default function PropertyType() {
         </ScrollView>
 
         <View className="px-5 mb-4 mt-4">
-          <Text className="text-sm text-black font-lato-bold tracking-wider">UPCOMING PROJECTS</Text>
+          <Text className="text-[15px] text-black font-lato-bold tracking-wider">UPCOMING PROJECTS</Text>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}>
           {upcomingProjectsData.map((project) => (
-            <View key={project.id} className="w-[290px] flex-row bg-[#F4F7FF] rounded-lg overflow-hidden mr-[15px] h-[110px]">
+            <View key={project.id} className="w-[290px] flex-row bg-[#F4F7FF] rounded-lg overflow-hidden mr-[15px] h-[130px]">
               <Image source={project.image} className="w-[35%] h-full" resizeMode="cover" />
               <View className="flex-1 p-2.5 justify-center border-2 border-[#4A43EC] border-l-0 rounded-r-lg">
-                <Text className="text-sm text-black font-lato-bold mb-0.5" numberOfLines={1}>
+                <Text className="text-[15px] text-black font-lato-bold mb-0.5" numberOfLines={1}>
                   {project.title}
                 </Text>
-                <Text className="text-[10px] text-gray-400 font-lato-regular mb-1">
+                <Text className="text-[12px] text-gray-400 font-lato-regular mb-3">
                   {project.developer}
                 </Text>
-                <Text className="text-[9px] text-gray-500 font-lato-regular mb-2 leading-3">
+                <Text className="text-[12px] text-gray-500 font-lato-regular mb-3">
                   {project.description}
                 </Text>
-                <Text className="text-sm text-black font-lato-bold">
+                <Text className="text-[15px] text-black font-lato-bold">
                   {project.price}
                 </Text>
               </View>

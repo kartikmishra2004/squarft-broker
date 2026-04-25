@@ -1,17 +1,32 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, Dimensions } from 'react-native';
 import { SvgXml } from "react-native-svg";
+
+const { width } = Dimensions.get("window");
+const TILE_SIZE = (width - 80) / 3;
 
 const CategoryTile = ({ item, onPress }) => {
     return (
         <Pressable
             onPress={() => onPress(item.id)}
-            className="w-[30%] aspect-square rounded-[20px] py-7 items-center justify-center mb-4 mx-[1.5%] bg-[#EBF1FF] active:bg-[#4A43EC]"
+            style={{ width: TILE_SIZE, height: TILE_SIZE, marginBottom: 15 }}
+            className="bg-[#F4F7FF] rounded-[18px] items-center justify-center active:bg-[#4A43EC]"
         >
             {({ pressed }) => (
                 <View className="items-center justify-center">
-                    <SvgXml xml={item.iconXml} width={24} height={24} color={pressed ? "#fff" : "#282D2F"} />
-                    <Text className={`text-[12px] mt-1.5 font-lato ${pressed ? "text-white" : "text-[#282D2F]"}`}>{item.label}</Text>
+                    <View className="justify-center items-center mb-3">
+                        <SvgXml 
+                            xml={item.iconXml} 
+                            width={28} 
+                            height={28} 
+                            color={pressed ? "#fff" : "#000"} 
+                        />
+                    </View>
+                    <Text 
+                        className={`text-[12px] font-lato-bold tracking-[0.5px] uppercase ${pressed ? "text-white" : "text-gray-700"}`}
+                    >
+                        {item.label}
+                    </Text>
                 </View>
             )}
         </Pressable>
