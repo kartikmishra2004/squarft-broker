@@ -76,7 +76,12 @@ export default function CustomerDetails() {
           >
             <View className="flex-row justify-between items-start">
               <View className="flex-1">
-                <Text className="text-white text-2xl font-lato-bold mb-1">{requirement.name}</Text>
+                <View className="flex-row items-center gap-2 mb-1">
+                  <Text className="text-white text-2xl font-lato-bold">{requirement.name}</Text>
+                  {requirement.isVerified && (
+                    <MaterialCommunityIcons name="check-decagram" size={20} color="white" />
+                  )}
+                </View>
                 <Text className="text-white/80 text-xs font-lato-regular mb-3">
                   Added on {requirement.addedDate || "Apr 11, 2026"}
                 </Text>

@@ -16,6 +16,7 @@ export const requirementsData = [
     maxArea: "2000",
     unit: "Square Feet (Sq. ft)",
     location: "12, Indore, Madhya Pradesh, 452010",
+    isVerified: true,
   },
   {
     id: 2,
@@ -34,6 +35,7 @@ export const requirementsData = [
     maxArea: "3000",
     unit: "Square Feet (Sq. ft)",
     location: "Vijay Nagar, Indore",
+    isVerified: true,
   },
   {
     id: 3,
@@ -52,5 +54,6 @@ export const requirementsData = [
     maxArea: "1500",
     unit: "Square Feet (Sq. ft)",
     location: "Rajwada, Indore",
+    isVerified: true,
   },
 ];

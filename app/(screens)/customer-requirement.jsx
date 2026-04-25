@@ -109,7 +109,12 @@ export default function CustomerRequirement() {
                   paddingVertical: 12
                 }}
               >
-                <Text className="text-white text-base font-lato-bold">{req.name}</Text>
+                <View className="flex-row items-center gap-1.5">
+                  <Text className="text-white text-base font-lato-bold">{req.name}</Text>
+                  {req.isVerified && (
+                    <MaterialCommunityIcons name="check-decagram" size={16} color="white" />
+                  )}
+                </View>
                 <View className="bg-white px-3 py-0.5 rounded-full">
                   <Text className="text-[#4A43EC] text-[10px] font-lato-bold uppercase tracking-wider">{req.status}</Text>
                 </View>

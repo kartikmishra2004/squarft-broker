@@ -17,7 +17,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
-import { addRequirement, updateRequirement } from "../../store/slices/requirementsSlice";
+import { addRequirement, updateRequirement, setContactVerified } from "../../store/slices/requirementsSlice";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -52,7 +52,10 @@ export default function AddCustomerRequirement() {
   const isEdit = !!id;
   
   const requirementsList = useSelector((state) => state.requirements.list);
+  const isContactVerified = useSelector((state) => state.requirements.isContactVerified);
   const existingReq = isEdit ? requirementsList.find(r => r.id.toString() === id.toString()) : null;
+
+  const [otp, setOtp] = useState("");
 
   const [form, setForm] = useState({
     status: "Buy",
@@ -98,6 +101,11 @@ export default function AddCustomerRequirement() {
       const maxPerc = ((existingReq.budgetMax || 10000000) - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
       setSliderMin(Math.max(0, minPerc));
       setSliderMax(Math.min(1, maxPerc));
+      
+      // If editing, we assume contact is already verified or skip for now
+      dispatch(setContactVerified(true));
+    } else {
+      dispatch(setContactVerified(false));
     }
   }, [id, existingReq]);
 
@@ -161,6 +169,20 @@ export default function AddCustomerRequirement() {
     })
   ).current;
 
+  const handleResendOTP = () => {
+    alert("OTP resent to " + form.contact);
+    setOtp("");
+  };
+
+  const handleOTPChange = (text) => {
+    setOtp(text);
+    if (text.length === 4) {
+      // Mock verification: any 4-digit OTP works
+      dispatch(setContactVerified(true));
+      Keyboard.dismiss();
+    }
+  };
+
   const formatCurrency = (val) => {
     if (val >= 10000000) {
        return `₹ ${Math.floor(val/10000000)} Cr+`;
@@ -175,6 +197,11 @@ export default function AddCustomerRequirement() {
   const handleSubmit = () => {
     if (!form.name || !form.contact) {
       alert("Please enter customer name and contact number");
+      return;
+    }
+
+    if (!isContactVerified) {
+      alert("Please verify the contact number via OTP first");
       return;
     }
 
@@ -197,6 +224,7 @@ export default function AddCustomerRequirement() {
       maxArea: form.maxArea || "2000",
       unit: form.unit,
       location: form.location || "Indore, MP",
+      isVerified: true,
     };
 
     if (isEdit) {
@@ -328,14 +356,49 @@ export default function AddCustomerRequirement() {
           {/* Contact Number */}
           <View className="mb-5" onLayout={(e) => handleFieldLayout("contact", e)}>
             <Text className="text-sm font-lato-bold mb-2">Contact Number</Text>
-            <TextInput
-              placeholder="Enter contact number"
-              keyboardType="phone-pad"
-              className="bg-white border border-gray-300 rounded-lg px-3 h-12 text-sm font-lato-regular"
-              value={form.contact}
-              onChangeText={(text) => setForm({ ...form, contact: text })}
-              onFocus={() => handleFocus("contact")}
-            />
+            <View className="flex-row items-center gap-2">
+              <View className="flex-1">
+                <TextInput
+                  placeholder="Enter contact number"
+                  keyboardType="phone-pad"
+                  className="bg-white border border-gray-300 rounded-lg px-3 h-12 text-sm font-lato-regular"
+                  value={form.contact}
+                  onChangeText={(text) => {
+                    setForm({ ...form, contact: text });
+                    if (isContactVerified) {
+                      dispatch(setContactVerified(false));
+                    }
+                  }}
+                  onFocus={() => handleFocus("contact")}
+                />
+              </View>
+              
+              {!isContactVerified && form.contact.length >= 10 && (
+                <View className="flex-row items-center gap-2">
+                  <TextInput
+                    placeholder="OTP"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    className="bg-white border border-gray-300 rounded-lg px-2 h-12 w-20 text-center text-sm font-lato-regular"
+                    value={otp}
+                    onChangeText={handleOTPChange}
+                  />
+                  <Pressable 
+                    onPress={handleResendOTP}
+                    className="bg-[#4A43EC]/10 px-2.5 h-12 items-center justify-center rounded-lg"
+                  >
+                    <Text className="text-[#4A43EC] text-[10px] font-lato-bold">Resend</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {isContactVerified && (
+                <View className="bg-green-100 p-2 rounded-full">
+                  <Ionicons name="checkmark-circle" size={20} color="green" />
+                </View>
+              )}
+            </View>
           </View>
 
           {/* Preferred Location */}
@@ -440,14 +503,14 @@ export default function AddCustomerRequirement() {
           {/* Submit Button */}
           <Pressable
             onPress={handleSubmit}
-            disabled={!form.name || !form.contact}
+            disabled={!form.name || !form.contact || !isContactVerified}
             className={`py-3.5 rounded-full items-center justify-center shadow-lg ${
-              !form.name || !form.contact 
+              !form.name || !form.contact || !isContactVerified
                 ? "bg-gray-300 shadow-gray-300/30" 
                 : "bg-[#4A43EC] shadow-blue-500/30"
             }`}
           >
-            <Text className={`font-lato-bold text-sm ${!form.name || !form.contact ? "text-gray-500" : "text-white"}`}>
+            <Text className={`font-lato-bold text-sm ${!form.name || !form.contact || !isContactVerified ? "text-gray-500" : "text-white"}`}>
               {isEdit ? "Update" : "Submit"}
             </Text>
           </Pressable>

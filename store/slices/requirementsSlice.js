@@ -5,6 +5,7 @@ const requirementsSlice = createSlice({
     name: 'requirements',
     initialState: {
         list: requirementsData,
+        isContactVerified: false,
     },
     reducers: {
         addRequirement: (state, action) => {
@@ -22,8 +23,11 @@ const requirementsSlice = createSlice({
         deleteRequirement: (state, action) => {
             state.list = state.list.filter(item => item.id !== action.payload);
         },
+        setContactVerified: (state, action) => {
+            state.isContactVerified = action.payload;
+        },
     },
 });
 
-export const { addRequirement, updateRequirement, deleteRequirement } = requirementsSlice.actions;
+export const { addRequirement, updateRequirement, deleteRequirement, setContactVerified } = requirementsSlice.actions;
 export default requirementsSlice.reducer;
