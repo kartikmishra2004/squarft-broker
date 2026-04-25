@@ -56,7 +56,7 @@ export default function Home() {
         backgroundColor="transparent"
         barStyle="light-content"
       />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }} bounces={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }} bounces={false}>
         <View
           style={{ paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 20 : 70 }}
           className="bg-[#4A43EC] px-6 pb-[80px]"
@@ -160,11 +160,11 @@ export default function Home() {
           </Pressable>
 
           {/* Categories Grid */}
-          <View className="flex-row flex-wrap justify-start gap-[15px] mb-[30px]">
+          <View className="flex-row flex-wrap justify-between mb-[30px] px-2">
             {categories.map((cat, index) => (
               <Pressable
                 key={index}
-                style={{ width: (width - 70) / 3 }}
+                style={{ width: (width - 80) / 3, height: (width - 80) / 3, marginBottom: 15 }}
                 onPress={() => {
                   if (cat.id === "house" || cat.id === "flats") {
                     router.push("/property-type");
@@ -172,14 +172,18 @@ export default function Home() {
                     router.push({ pathname: "/property-type", params: { typeId: cat.id } });
                   }
                 }}
-                className="bg-[#F4F7FF] rounded-[18px] py-[15px] items-center space-y-2"
+                className="bg-[#F4F7FF] rounded-[18px] items-center justify-center"
               >
 
 
-                <View className="w-10 h-10 justify-center items-center">
-                  <cat.library name={cat.icon} size={28} color="#4A43EC" />
+                <View className="justify-center items-center mb-3">
+                  <Image 
+                    source={cat.image} 
+                    style={{ width: 28, height: 28 }} 
+                    resizeMode="contain" 
+                  />
                 </View>
-                <Text className="text-[10px] text-gray-700 font-lato-bold tracking-[0.5px]">
+                <Text className="text-[12px] text-gray-700 font-lato-bold tracking-[0.5px] uppercase">
                   {cat.name}
                 </Text>
               </Pressable>
