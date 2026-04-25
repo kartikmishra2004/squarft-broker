@@ -12,7 +12,6 @@ const commonCategories = [
 
 export const categoriesData = {
   SELL: commonCategories,
-  RENT: commonCategories,
 };
 
 export const upcomingProjectsData = [

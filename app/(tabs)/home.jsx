@@ -24,7 +24,7 @@ const stats = [
   { label: "Rejected", count: 14 },
 ];
 
-const mainTabs = ["SELL", "RENT"];
+const mainTabs = ["SELL"];
 const buyFilter = "BUY";
 
 
