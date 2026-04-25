@@ -37,28 +37,35 @@ const KycModal = () => {
         >
             <View style={styles.overlay}>
                 <View style={styles.modalContainer}>
-                    <View style={styles.iconContainer}>
-                        <MaterialCommunityIcons name="shield-account-variant-outline" size={50} color="#4A43EC" />
+                    <View style={styles.header}>
+                        <View style={styles.iconContainer}>
+                            <MaterialCommunityIcons name="shield" size={40} color="#FFD700" />
+                            <View style={styles.questionMarkContainer}>
+                                <Text style={styles.questionMark}>?</Text>
+                            </View>
+                        </View>
                     </View>
                     
-                    <Text style={styles.title}>Complete Your KYC</Text>
-                    <Text style={styles.description}>
-                        To unlock all features of the app and continue your journey, please complete your KYC verification.
-                    </Text>
+                    <View style={styles.divider} />
 
-                    <View style={styles.buttonContainer}>
+                    <View style={styles.content}>
+                        <Text style={styles.title}>Please Complete Your KYC</Text>
+                        <Text style={styles.description}>
+                            Complete your KYC to start uploading your property and reach potential buyers.
+                        </Text>
+
                         <Pressable 
                             style={styles.primaryButton}
                             onPress={handleCompleteKyc}
                         >
-                            <Text style={styles.primaryButtonText}>Complete KYC</Text>
+                            <Text style={styles.primaryButtonText}>Proceed</Text>
                         </Pressable>
 
                         <Pressable 
-                            style={styles.secondaryButton}
+                            style={styles.refreshButton}
                             onPress={handleRefresh}
                         >
-                            <Text style={styles.secondaryButtonText}>Refresh</Text>
+                            <Text style={styles.refreshButtonText}>Refresh Status</Text>
                         </Pressable>
                     </View>
                 </View>
@@ -70,75 +77,88 @@ const KycModal = () => {
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     modalContainer: {
-        width: width * 0.85,
+        width: width * 0.92,
         backgroundColor: 'white',
-        borderRadius: 24,
-        padding: 24,
-        alignItems: 'center',
+        borderRadius: 20,
+        overflow: 'hidden',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 10,
-        elevation: 10,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 15,
+        elevation: 5,
+    },
+    header: {
+        alignItems: 'center',
+        paddingVertical: 12,
     },
     iconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#F4F7FF',
+        position: 'relative',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
+    },
+    questionMarkContainer: {
+        position: 'absolute',
+        top: '20%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    questionMark: {
+        fontSize: 18,
+        color: 'white',
+        fontWeight: 'bold',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#F3F4F6',
+        width: '100%',
+    },
+    content: {
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 12,
+        alignItems: 'center',
     },
     title: {
-        fontSize: 22,
-        fontFamily: 'Lato-Bold',
-        color: '#1a1a1a',
-        marginBottom: 12,
+        fontSize: 19,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 6,
         textAlign: 'center',
     },
     description: {
-        fontSize: 14,
-        fontFamily: 'Lato-Regular',
-        color: '#666',
+        fontSize: 13,
+        color: '#6B7280',
         textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: 30,
-    },
-    buttonContainer: {
-        width: '100%',
-        gap: 12,
+        lineHeight: 18,
+        marginBottom: 20,
+        paddingHorizontal: 15,
     },
     primaryButton: {
-        backgroundColor: '#4A43EC',
-        paddingVertical: 14,
-        borderRadius: 12,
+        backgroundColor: '#4338CA',
+        paddingVertical: 12,
+        borderRadius: 100,
         width: '100%',
         alignItems: 'center',
     },
     primaryButtonText: {
         color: 'white',
-        fontSize: 16,
-        fontFamily: 'Lato-Bold',
+        fontSize: 15,
+        fontWeight: '600',
     },
-    secondaryButton: {
-        backgroundColor: 'transparent',
-        paddingVertical: 14,
-        borderRadius: 12,
-        width: '100%',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
+    refreshButton: {
+        marginTop: 8,
+        paddingVertical: 4,
     },
-    secondaryButtonText: {
-        color: '#666',
-        fontSize: 16,
-        fontFamily: 'Lato-Bold',
+    refreshButtonText: {
+        color: '#9CA3AF',
+        fontSize: 12,
+        fontWeight: '500',
+        textDecorationLine: 'underline',
     },
 });
 
