@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Platform, View } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import KycModal from "../../components/KycModal";
 
 const icons = {
@@ -13,7 +14,7 @@ const icons = {
         inactive: require("../../assets/icons/tabs/fav.png"),
         active: require("../../assets/icons/tabs/fav-active.png"),
     },
-    book: {
+    addProject: {
         inactive: require("../../assets/icons/tabs/book.png"),
         active: require("../../assets/icons/tabs/book-active.png"),
     },
@@ -28,6 +29,30 @@ const icons = {
 };
 
 function TabIcon({ name, focused, size }) {
+    if (name === "addProject") {
+        return (
+            <View 
+                style={{ 
+                    width: 56, 
+                    height: 56, 
+                    backgroundColor: "#4A43EC", 
+                    borderRadius: 28, 
+                    justifyContent: "center", 
+                    itemsCenter: "center",
+                    position: "absolute",
+                    bottom: 10,
+                    elevation: 5,
+                    shadowColor: "#4A43EC",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 5,
+                }}
+                className="items-center justify-center"
+            >
+                <Ionicons name="add" size={32} color="white" />
+            </View>
+        );
+    }
     const icon = icons[name];
     const activeSize = size?.active ?? { width: 44, height: 44 };
     const inactiveSize = size?.inactive ?? { width: 24, height: 24 };
@@ -93,12 +118,12 @@ export default function TabsLayout() {
                     }}
                 />
                 <Tabs.Screen
-                    name="book"
+                    name="addProject"
                     options={{
-                        headerTitle: "Book",
+                        headerShown: false,
                         tabBarIcon: ({ focused }) => (
                             <TabIcon
-                                name="book"
+                                name="addProject"
                                 focused={focused}
                                 size={{
                                     active: { width: 56, height: 56, position: "absolute", bottom: 0 },
