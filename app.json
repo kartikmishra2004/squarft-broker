@@ -17,7 +17,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.kartik2611mishra.squarftbroker"
+      "package": "com.kartik2611mishra.squarftbroker",
+      "softwareKeyboardLayoutMode": "pan"
     },
     "androidNavigationBar": {
       "backgroundColor": "#ffffff",
