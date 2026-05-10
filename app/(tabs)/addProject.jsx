@@ -512,7 +512,6 @@ export default function AddProject() {
                                     />
                                 </View>
 
-                                {/* Tower / Flat No */}
                                 <View>
                                     <Text className="text-sm font-lato-bold text-black mb-3 pt-2">Plot / Flat / Villa ,shop, office, showroom  House no.</Text>
                                     <View className="flex-row gap-3">
@@ -549,7 +548,7 @@ export default function AddProject() {
                                     </View>
                                 </View>
 
-                                {/* City / State / Pincode */}
+                               
                                 <View>
                                     <View className="flex-row gap-2 pt-2">
                                         <View style={{ flex: 1 }}>
@@ -658,7 +657,7 @@ export default function AddProject() {
                                     />
                                 </View>
 
-                                {/* Next Button - always rendered to avoid layout shift, visible only at bottom */}
+                               
                                 <View className="mt-6 mb-4" style={{ opacity: hasScrolledToBottom ? 1 : 0 }} pointerEvents={hasScrolledToBottom ? "auto" : "none"}>
                                     <TouchableOpacity
                                         className="bg-[#4A43EC] py-4 rounded-xl items-center"
@@ -671,10 +670,9 @@ export default function AddProject() {
                             </View>
                         ) : (
                             <View className="gap-5 pt-2">
-                                {/* Upload Images & Documents header */}
+                             
                                 <Text className="text-md font-lato-bold text-black">Upload Property Images & Documents</Text>
 
-                                {/* Upload Images */}
                                 <View>
                                     <Text className="text-sm font-lato-bold text-black mb-2 mt-5">Upload Images</Text>
                                     <TouchableOpacity
@@ -866,7 +864,6 @@ export default function AddProject() {
                     </BottomSheetView>
                 </BottomSheetModal>
 
-                {/* Upload Picker Bottom Sheet */}
                 <BottomSheetModal
                     ref={uploadSheetRef}
                     snapPoints={["32%"]}
