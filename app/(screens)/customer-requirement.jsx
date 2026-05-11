@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,33 +12,61 @@ import { router, Stack } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSelector, useDispatch } from "react-redux";
-import { deleteRequirement } from "../../store/slices/requirementsSlice";
+import { fetchRequirements, deleteRequirementApi } from "../../store/slices/requirementsSlice";
 import { LinearGradient } from "expo-linear-gradient";
-import { Modal } from "react-native";
+import { Modal, RefreshControl } from "react-native";
+import SkeletonLoader from "../../components/SkeletonLoader";
 
 export default function CustomerRequirement() {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
-  const requirements = useSelector((state) => state.requirements.list);
+  const { list: requirements, loading, pagination } = useSelector((state) => state.requirements);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const filteredRequirements = requirements.filter((req) =>
-    req.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    dispatch(fetchRequirements({ search: searchQuery }));
+  }, [dispatch, searchQuery]);
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await dispatch(fetchRequirements({ search: searchQuery }));
+    setIsRefreshing(false);
+  };
+
+  // The filtering is now handled by the API via searchQuery in useEffect,
+  // but we can still keep local filtering for smoother UI if needed.
+  const filteredRequirements = requirements;
 
   const handleDeletePress = (id) => {
     setSelectedId(id);
     setDeleteModalVisible(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedId) {
-      dispatch(deleteRequirement(selectedId));
-      setDeleteModalVisible(false);
-      setSelectedId(null);
+      try {
+        await dispatch(deleteRequirementApi(selectedId)).unwrap();
+        setDeleteModalVisible(false);
+        setSelectedId(null);
+      } catch (err) {
+        alert(err || "Failed to delete");
+      }
     }
+  };
+
+  const formatCurrency = (val) => {
+    if (!val) return "N/A";
+    if (val >= 10000000) {
+       return `₹ ${Math.floor(val/10000000)} Cr+`;
+    }
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(val).replace('₹', '₹ ');
   };
 
   return (
@@ -80,8 +108,25 @@ export default function CustomerRequirement() {
           flexGrow: filteredRequirements.length === 0 ? 1 : 0
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={["#4A43EC"]} />
+        }
       >
-        {filteredRequirements.length === 0 ? (
+        {loading && !isRefreshing ? (
+          // Skeleton Loaders
+          [1, 2, 3].map((i) => (
+            <View key={i} className="bg-white rounded-2xl mb-4 overflow-hidden border border-gray-100 p-4">
+              <SkeletonLoader width="60%" height={20} style={{ marginBottom: 10 }} />
+              <SkeletonLoader width="40%" height={15} style={{ marginBottom: 20 }} />
+              <SkeletonLoader width="100%" height={60} style={{ borderRadius: 12, marginBottom: 15 }} />
+              <View className="flex-row gap-2">
+                <SkeletonLoader width="30%" height={35} style={{ borderRadius: 10 }} />
+                <SkeletonLoader width="30%" height={35} style={{ borderRadius: 10 }} />
+                <SkeletonLoader width="30%" height={35} style={{ borderRadius: 10 }} />
+              </View>
+            </View>
+          ))
+        ) : filteredRequirements.length === 0 ? (
           <View className="flex-1 items-center justify-center py-20">
             <View className="bg-[#F4F7FF] w-24 h-24 rounded-full items-center justify-center mb-6">
               <MaterialCommunityIcons name="clipboard-text-outline" size={48} color="#4A43EC" />
@@ -110,13 +155,11 @@ export default function CustomerRequirement() {
                 }}
               >
                 <View className="flex-row items-center gap-1.5">
-                  <Text className="text-white text-base font-lato-bold">{req.name}</Text>
-                  {req.isVerified && (
-                    <MaterialCommunityIcons name="check-decagram" size={16} color="white" />
-                  )}
+                  <Text className="text-white text-base font-lato-bold">{req.customer_name}</Text>
+                  <MaterialCommunityIcons name="check-decagram" size={16} color="white" />
                 </View>
                 <View className="bg-white px-3 py-0.5 rounded-full">
-                  <Text className="text-[#4A43EC] text-[10px] font-lato-bold uppercase tracking-wider">{req.status}</Text>
+                  <Text className="text-[#4A43EC] text-[10px] font-lato-bold uppercase tracking-wider">{req.requirement_type}</Text>
                 </View>
               </LinearGradient>
 
@@ -126,11 +169,11 @@ export default function CustomerRequirement() {
                 <View className="flex-row justify-between mb-3">
                   <View className="flex-row items-center">
                     <MaterialCommunityIcons name="office-building-marker-outline" size={16} color="#4A43EC" />
-                    <Text className="ml-1 text-[10px] text-[#4A43EC] font-lato-bold">{req.category}</Text>
+                    <Text className="ml-1 text-[10px] text-[#4A43EC] font-lato-bold">{req.property_type}</Text>
                   </View>
                   <View className="flex-row items-center">
-                    <MaterialCommunityIcons name="bed-outline" size={16} color="#4A43EC" />
-                    <Text className="ml-1 text-[10px] text-[#4A43EC] font-lato-bold">{req.rooms}</Text>
+                    <MaterialCommunityIcons name="map-marker-outline" size={16} color="#4A43EC" />
+                    <Text className="ml-1 text-[10px] text-[#4A43EC] font-lato-bold" numberOfLines={1}>{req.preferred_locations?.[0] || "N/A"}</Text>
                   </View>
                 </View>
 
@@ -142,7 +185,7 @@ export default function CustomerRequirement() {
                   </View>
                   <View>
                     <Text className="text-[9px] text-gray-400 font-lato-regular">Budget Range</Text>
-                    <Text className="text-xs font-lato-bold text-black">{req.budgetRange}</Text>
+                    <Text className="text-xs font-lato-bold text-black">{formatCurrency(req.budget_min)} - {formatCurrency(req.budget_max)}</Text>
                   </View>
                 </View>
 

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -11,20 +11,65 @@ import {
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchRequirementById } from "../../store/slices/requirementsSlice";
 import { LinearGradient } from "expo-linear-gradient";
+import SkeletonLoader from "../../components/SkeletonLoader";
 
 export default function CustomerDetails() {
   const insets = useSafeAreaInsets();
+  const dispatch = useDispatch();
   const { id } = useLocalSearchParams();
-  const requirement = useSelector((state) =>
-    state.requirements.list.find((r) => r.id.toString() === id.toString())
-  );
+  const requirement = useSelector((state) => state.requirements.currentRequirement);
+  const loading = useSelector((state) => state.requirements.loading);
+
+  useEffect(() => {
+    if (id) {
+      dispatch(fetchRequirementById(id));
+    }
+  }, [dispatch, id]);
+
+  const formatCurrency = (val) => {
+    if (!val) return "N/A";
+    if (val >= 10000000) {
+       return `₹ ${Math.floor(val/10000000)} Cr+`;
+    }
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(val).replace('₹', '₹ ');
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "N/A";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  if (loading && !requirement) {
+    return (
+      <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
+        <View className="px-4 py-4">
+          <SkeletonLoader width="100%" height={150} style={{ borderRadius: 16, marginBottom: 18 }} />
+          <SkeletonLoader width="100%" height={250} style={{ borderRadius: 16, marginBottom: 18 }} />
+          <SkeletonLoader width="100%" height={100} style={{ borderRadius: 16, marginBottom: 18 }} />
+        </View>
+      </View>
+    );
+  }
 
   if (!requirement) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <Text>Requirement not found</Text>
+        <Text className="font-lato-bold text-gray-500">Requirement not found</Text>
+        <Pressable onPress={() => router.back()} className="mt-4 bg-[#4A43EC] px-6 py-2 rounded-full">
+          <Text className="text-white font-lato-bold">Go Back</Text>
+        </Pressable>
       </View>
     );
   }
@@ -77,21 +122,19 @@ export default function CustomerDetails() {
             <View className="flex-row justify-between items-start">
               <View className="flex-1">
                 <View className="flex-row items-center gap-2 mb-1">
-                  <Text className="text-white text-2xl font-lato-bold">{requirement.name}</Text>
-                  {requirement.isVerified && (
-                    <MaterialCommunityIcons name="check-decagram" size={20} color="white" />
-                  )}
+                  <Text className="text-white text-2xl font-lato-bold">{requirement.customer_name}</Text>
+                  <MaterialCommunityIcons name="check-decagram" size={20} color="white" />
                 </View>
                 <Text className="text-white/80 text-xs font-lato-regular mb-3">
-                  Added on {requirement.addedDate || "Apr 11, 2026"}
+                  Added on {formatDate(requirement.created_at)}
                 </Text>
                 <View className="flex-row items-center">
                   <Ionicons name="phone-portrait-outline" size={16} color="white" />
-                  <Text className="text-white ml-2 text-sm font-lato-bold">{requirement.contact || "+91 8120180101"}</Text>
+                  <Text className="text-white ml-2 text-sm font-lato-bold">{requirement.contact_number}</Text>
                 </View>
               </View>
               <Pressable 
-                onPress={() => Linking.openURL(`tel:${requirement.contact}`)}
+                onPress={() => Linking.openURL(`tel:${requirement.contact_number}`)}
                 className="bg-white w-12 h-12 rounded-full items-center justify-center shadow-sm"
               >
                 <Ionicons name="call" size={20} color="#4A43EC" />
@@ -103,23 +146,24 @@ export default function CustomerDetails() {
           <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-100">
             <Text className="text-[#4A43EC] text-sm font-lato-bold mb-3 tracking-wide">REQUIREMENTS</Text>
 
-            <RequirementRow icon="currency-inr" label="Budget Range" value={requirement.budgetRange} isMCI />
-            <RequirementRow icon="list-outline" label="Listing Type" value={requirement.status} />
-            <RequirementRow icon="home-outline" label="Property Type" value={requirement.type} />
-            <RequirementRow icon="bed-outline" label="Sub Property Type" value={requirement.category} isMCI />
-            <RequirementRow icon="trending-up" label="Min Area" value={requirement.minArea} />
-            <RequirementRow icon="trending-up" label="Max Area" value={requirement.maxArea} />
-            <RequirementRow icon="trending-up" label="Area Unit" value={requirement.unit} />
+            <RequirementRow icon="currency-inr" label="Budget Range" value={`${formatCurrency(requirement.budget_min)} - ${formatCurrency(requirement.budget_max)}`} isMCI />
+            <RequirementRow icon="list-outline" label="Listing Type" value={requirement.requirement_type} />
+            <RequirementRow icon="home-outline" label="Property Type" value={requirement.property_type} />
+            <RequirementRow icon="location" label="Locations" value={requirement.preferred_locations?.join(', ') || "N/A"} />
           </View>
 
           {/* Preferred Locations Section */}
           <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-100">
             <Text className="text-[#4A43EC] text-sm font-lato-bold mb-3 tracking-wide">PREFERRED LOCATIONS</Text>
-            <View className="border border-[#4A43EC]/20 rounded-full px-4 py-2 flex-row items-center self-start max-w-full">
-              <Ionicons name="location" size={16} color="#4A43EC" />
-              <Text className="text-[#4A43EC] text-[11px] font-lato-regular ml-2 flex-1" numberOfLines={1}>
-                {requirement.location || "12, Indore, Madhya Pradesh, 452010"}
-              </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {requirement.preferred_locations?.map((loc, index) => (
+                <View key={index} className="border border-[#4A43EC]/20 rounded-full px-4 py-2 flex-row items-center self-start">
+                  <Ionicons name="location" size={16} color="#4A43EC" />
+                  <Text className="text-[#4A43EC] text-[11px] font-lato-regular ml-2">
+                    {loc}
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
 

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { addBankAccount } from '../../store/slices/walletSlice';
+import { addBankAccountApi } from '../../store/slices/walletSlice';
 
 const AddBankScreen = () => {
     const router = useRouter();
@@ -16,7 +16,7 @@ const AddBankScreen = () => {
     const [reAccountNumber, setReAccountNumber] = useState('');
     const [ifsc, setIfsc] = useState('');
 
-    const handleAddBank = () => {
+    const handleAddBank = async () => {
         if (!bankName || !accountNumber || !reAccountNumber || !ifsc) {
             Alert.alert("Error", "Please fill all fields");
             return;
@@ -26,13 +26,17 @@ const AddBankScreen = () => {
             return;
         }
 
-        dispatch(addBankAccount({
-            bankName,
-            accountNumber,
-            ifsc
-        }));
+        try {
+            await dispatch(addBankAccountApi({
+                bankName: bankName,
+                accountNumber: accountNumber,
+                ifscCode: ifsc
+            })).unwrap();
 
-        router.replace("/(screens)/bank-success");
+            router.replace("/(screens)/bank-success");
+        } catch (err) {
+            Alert.alert("Error", err || "Failed to add bank account");
+        }
     };
 
     const InputField = ({ label, placeholder, value, onChangeText, keyboardType = "default" }) => (

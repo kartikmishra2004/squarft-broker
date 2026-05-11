@@ -1,21 +1,22 @@
 import { Text, View, TextInput, TouchableOpacity, Image } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
-import { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setOtpDigit, clearOtp, setLoggedIn } from "../../store/slices/authSlice";
+import { setOtpDigit, clearOtp, loginUser, verifyOtpApi, registerUser, clearError, sendOtpApi } from "../../store/slices/authSlice";
+import { ActivityIndicator } from "react-native";
 
 const logo = require("../../assets/icons/app-icon.png");
 
 export default function OtpVerification() {
     const dispatch = useDispatch();
-    const { otp, otpFlow } = useSelector((state) => state.auth);
+    const { otp, otpFlow, otpToken, name, mobile, password, loading, error } = useSelector((state) => state.auth);
     const inputs = useRef([]);
 
     const handleChange = (text, index) => {
         const digit = text.replace(/[^0-9]/g, '').slice(-1);
         dispatch(setOtpDigit({ index, value: digit }));
-        if (digit && index < 3) {
+        if (digit && index < 5) {
             inputs.current[index + 1]?.focus();
         }
     };
@@ -26,21 +27,59 @@ export default function OtpVerification() {
         }
     };
 
-    const handleVerify = () => {
-        dispatch(clearOtp());
-        if (otpFlow === 'forgot-password') {
-            router.push("/change-password");
-        } else {
-            dispatch(setLoggedIn(true));
-            router.replace("/(tabs)/home");
+    const handleVerify = async () => {
+        const otpCode = otp.join('');
+        if (otpCode.length < 6) {
+            alert("Please enter full OTP");
+            return;
+        }
+
+        try {
+            const verifyResult = await dispatch(verifyOtpApi({ otp_token: otpToken, otp: otpCode })).unwrap();
+            
+            if (otpFlow === 'register') {
+                // Now register the user
+                const [first_name, ...last_name_parts] = name.split(' ');
+                const last_name = last_name_parts.join(' ');
+                
+                await dispatch(registerUser({
+                    phone: mobile,
+                    password: password,
+                    first_name,
+                    last_name,
+                })).unwrap();
+
+                // Auto-login after registration
+                const loginResult = await dispatch(loginUser({ phone: mobile, password })).unwrap();
+                if (loginResult.token) {
+                    dispatch(clearOtp());
+                    router.replace("/(tabs)/home");
+                }
+            } else if (otpFlow === 'forgot-password') {
+                router.push("/change-password");
+            }
+        } catch (err) {
+            alert(err || "Verification failed");
         }
     };
 
-    const handleResend = () => {
-        dispatch(clearOtp());
-        inputs.current[0]?.focus();
-      
+    const handleResend = async () => {
+        try {
+            await dispatch(sendOtpApi({ phone: mobile, purpose: otpFlow === 'forgot-password' ? 'reset_password' : 'register' })).unwrap();
+            dispatch(clearOtp());
+            inputs.current[0]?.focus();
+            alert("OTP resent successfully");
+        } catch (err) {
+            alert(err || "Failed to resend OTP");
+        }
     };
+
+    useEffect(() => {
+        if (error) {
+            alert(error);
+            dispatch(clearError());
+        }
+    }, [error]);
 
     return (
         <View className="flex-1">
@@ -67,13 +106,13 @@ export default function OtpVerification() {
                             keyboardType="number-pad"
                             maxLength={1}
                             style={{
-                                width: 70,
-                                height: 70,
+                                width: 50,
+                                height: 60,
                                 borderWidth: 1,
                                 borderColor: digit ? '#4A43EC' : '#E5E7EB',
                                 borderRadius: 12,
                                 textAlign: 'center',
-                                fontSize: 22,
+                                fontSize: 20,
                                 color: '#000',
                             }}
                         />
@@ -82,9 +121,14 @@ export default function OtpVerification() {
 
                 <TouchableOpacity
                     onPress={handleVerify}
-                    className="bg-[#4A43EC] rounded-2xl py-4 items-center mb-6"
+                    disabled={loading}
+                    className={`bg-[#4A43EC] rounded-2xl py-4 items-center mb-6 ${loading ? 'opacity-70' : ''}`}
                 >
-                    <Text className="text-white text-[16px] font-semibold">Submit</Text>
+                    {loading ? (
+                        <ActivityIndicator color="white" />
+                    ) : (
+                        <Text className="text-white text-[16px] font-semibold">Submit</Text>
+                    )}
                 </TouchableOpacity>
 
                 <View className="flex-row justify-center items-center">

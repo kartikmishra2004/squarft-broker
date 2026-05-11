@@ -4,23 +4,25 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import { walletData } from '../../data/wallet';
-import { withdrawAmount } from '../../store/slices/walletSlice';
+import { fetchWalletOverview, fetchBankAccounts, fetchTransactions, requestWithdrawalApi } from '../../store/slices/walletSlice';
 
 const WalletScreen = () => {
     const router = useRouter();
     const { withdraw } = useLocalSearchParams();
     const dispatch = useDispatch();
-    const { balance, bankAccounts } = useSelector((state) => state.wallet);
+    const { balance, bankAccounts, transactions, loading } = useSelector((state) => state.wallet);
     
     // States for view toggle and withdraw form
     const [isWithdrawMode, setIsWithdrawMode] = useState(false);
 
     useEffect(() => {
+        dispatch(fetchWalletOverview());
+        dispatch(fetchBankAccounts());
+        dispatch(fetchTransactions({ limit: 5 }));
         if (withdraw === 'true') {
             setIsWithdrawMode(true);
         }
-    }, [withdraw]);
+    }, [withdraw, dispatch]);
     const [amount, setAmount] = useState('');
     const [selectedBankId, setSelectedBankId] = useState(null);
 
@@ -41,7 +43,7 @@ const WalletScreen = () => {
         []
     );
 
-    const handleWithdraw = () => {
+    const handleWithdraw = async () => {
         if (!amount || isNaN(parseFloat(amount))) return;
         if (parseFloat(amount) > balance) {
             Alert.alert("Error", "Insufficient balance");
@@ -56,10 +58,21 @@ const WalletScreen = () => {
             return;
         }
 
-        dispatch(withdrawAmount(amount));
-        setAmount('');
-        setIsWithdrawMode(false);
-        Alert.alert("Success", `₹${amount} withdrawal initiated successfully`);
+        try {
+            await dispatch(requestWithdrawalApi({ requestedAmount: amount, bankAccountId: selectedBankId })).unwrap();
+            setAmount('');
+            setIsWithdrawMode(false);
+            Alert.alert("Success", `₹${amount} withdrawal initiated successfully`);
+            dispatch(fetchWalletOverview()); // Refresh balance
+        } catch (err) {
+            Alert.alert("Error", err || "Withdrawal failed");
+        }
+    };
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return "";
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
     const handleBack = () => {
@@ -143,18 +156,20 @@ const WalletScreen = () => {
                     </View>
 
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-                        {walletData.transactions.slice(0, 7).map((item) => (
+                        {transactions.map((item) => (
                             <Pressable
                                 key={item.id}
                                 onPress={() => handlePresentModalPress(item)}
                                 className="flex-row items-center justify-between py-3 border-b border-gray-100"
                             >
                                 <View>
-                                    <Text className="text-[13px] font-manrope-bold text-[#272727]">{item.title}</Text>
-                                    <Text className="text-[9px] text-gray-400 font-manrope-medium mt-1">{item.date}</Text>
+                                    <Text className="text-[13px] font-manrope-bold text-[#272727]">{item.property_name || 'Commission'}</Text>
+                                    <Text className="text-[9px] text-gray-400 font-manrope-medium mt-1">{formatDate(item.created_at)}</Text>
                                 </View>
                                 <View className="flex-row items-center">
-                                    <Text className="text-[#22C55E] text-[13px] font-manrope-bold mr-2">{item.amount}</Text>
+                                    <Text className={`${item.type === 'credit' ? 'text-[#22C55E]' : 'text-[#EF4444]'} text-[13px] font-manrope-bold mr-2`}>
+                                        {item.type === 'credit' ? '+' : '-'}₹{Number(item.amount).toLocaleString('en-IN')}
+                                    </Text>
                                     <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
                                 </View>
                             </Pressable>
@@ -190,7 +205,7 @@ const WalletScreen = () => {
                                 </View>
                                 <View className="flex-1">
                                     <Text className="text-[13px] font-manrope-bold text-[#272727]">{bank.bankName}</Text>
-                                    <Text className="text-[10px] text-gray-400 font-manrope-medium mt-0.5">XXXXXXXX{bank.accountNumber?.slice(-4)}</Text>
+                                    <Text className="text-[10px] text-gray-400 font-manrope-medium mt-0.5">{bank.accountNumberMasked}</Text>
                                 </View>
                                 <View className={`w-5 h-5 rounded-full border items-center justify-center ${selectedBankId === bank.id ? 'border-[#4A43EC]' : 'border-gray-300'}`}>
                                     {selectedBankId === bank.id && <View className="w-2.5 h-2.5 rounded-full bg-[#4A43EC]" />}
@@ -238,26 +253,26 @@ const WalletScreen = () => {
             >
                 <BottomSheetView className="flex-1 px-6 pt-5">
                     <View className="flex-row items-center justify-between mb-1">
-                        <Text className="text-[15px] font-manrope-extrabold text-[#272727]">{selectedTransaction?.title}</Text>
+                        <Text className="text-[15px] font-manrope-extrabold text-[#272727]">{selectedTransaction?.property_name || 'Commission'}</Text>
                         <Pressable onPress={() => bottomSheetModalRef.current?.dismiss()}>
                             <Text className="text-[#FF4B4B] font-manrope-bold text-[12px]">Cancel</Text>
                         </Pressable>
                     </View>
-                    <Text className="text-gray-400 font-manrope-medium mb-5 text-[11px]">{selectedTransaction?.location}</Text>
+                    <Text className="text-gray-400 font-manrope-medium mb-5 text-[11px]">{selectedTransaction?.type === 'credit' ? 'Earned from property sale' : 'Withdrawal to bank'}</Text>
 
                     <View className="bg-[#E8F9EE] rounded-[12px] py-3 items-center mb-5">
-                        <Text className="text-[#22C55E] text-[20px] font-manrope-extrabold">{selectedTransaction?.amount}</Text>
+                        <Text className="text-[#22C55E] text-[20px] font-manrope-extrabold">₹{Number(selectedTransaction?.amount).toLocaleString('en-IN')}</Text>
                     </View>
 
                     <View className="bg-white border border-gray-100 rounded-[14px] p-3.5 mb-3.5" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 5 }}>
                         <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">Transfer to</Text>
-                        <Text className="text-[#272727] text-[13px] font-manrope-bold">{selectedTransaction?.bank}</Text>
+                        <Text className="text-[#272727] text-[13px] font-manrope-bold">{selectedTransaction?.bank_name || 'N/A'}</Text>
                     </View>
 
                     <View className="bg-white border border-gray-100 rounded-[14px] p-3.5 flex-row items-center justify-between" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 5 }}>
                         <View>
                             <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">Transaction no.</Text>
-                            <Text className="text-[#272727] text-[13px] font-manrope-bold">{selectedTransaction?.transactionNo}</Text>
+                            <Text className="text-[#272727] text-[13px] font-manrope-bold">{selectedTransaction?.id?.toString().slice(0, 8)}...</Text>
                         </View>
                         <Pressable className="p-2 border border-blue-50 bg-blue-50/30 rounded-xl">
                             <Ionicons name="copy-outline" size={20} color="#4D45ED" />

@@ -17,7 +17,8 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
-import { addRequirement, updateRequirement, setContactVerified } from "../../store/slices/requirementsSlice";
+import { createRequirement, updateRequirementApi, setContactVerified } from "../../store/slices/requirementsSlice";
+import { ActivityIndicator } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -50,6 +51,7 @@ export default function AddCustomerRequirement() {
   const scrollRef = useRef(null);
   const { id } = useLocalSearchParams();
   const isEdit = !!id;
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const requirementsList = useSelector((state) => state.requirements.list);
   const isContactVerified = useSelector((state) => state.requirements.isContactVerified);
@@ -82,27 +84,32 @@ export default function AddCustomerRequirement() {
 
   useEffect(() => {
     if (isEdit && existingReq) {
+      // Normalize requirement type for UI
+      let uiStatus = "Buy";
+      if (existingReq.requirement_type === "rent") {
+        uiStatus = "Rent/Lease";
+      }
+
       setForm({
-        status: existingReq.status || "Buy",
-        category: existingReq.category || "House",
-        minArea: existingReq.minArea === "null" ? "" : existingReq.minArea,
-        maxArea: existingReq.maxArea || "2000",
-        unit: existingReq.unit || "Square Feet (Sq. ft)",
-        name: existingReq.name || "",
-        contact: existingReq.contact || "",
-        location: existingReq.location || "",
-        budgetMin: existingReq.budgetMin || MIN_VALUE,
-        budgetMax: existingReq.budgetMax || 10000000,
+        status: uiStatus,
+        category: existingReq.property_type || "House",
+        minArea: "", 
+        maxArea: "2000",
+        unit: "Square Feet (Sq. ft)",
+        name: existingReq.customer_name || "",
+        contact: existingReq.contact_number || "",
+        location: existingReq.preferred_locations?.[0] || "",
+        budgetMin: existingReq.budget_min || MIN_VALUE,
+        budgetMax: existingReq.budget_max || 10000000,
         details: existingReq.notes || "",
-        rooms: existingReq.rooms || "N/A",
+        rooms: "N/A",
       });
       
-      const minPerc = ((existingReq.budgetMin || MIN_VALUE) - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
-      const maxPerc = ((existingReq.budgetMax || 10000000) - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
+      const minPerc = ((existingReq.budget_min || MIN_VALUE) - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
+      const maxPerc = ((existingReq.budget_max || 10000000) - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
       setSliderMin(Math.max(0, minPerc));
       setSliderMax(Math.min(1, maxPerc));
       
-      // If editing, we assume contact is already verified or skip for now
       dispatch(setContactVerified(true));
     } else {
       dispatch(setContactVerified(false));
@@ -194,46 +201,43 @@ export default function AddCustomerRequirement() {
     }).format(val).replace('₹', '₹ ');
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name || !form.contact) {
       alert("Please enter customer name and contact number");
       return;
     }
 
-    if (!isContactVerified) {
-      alert("Please verify the contact number via OTP first");
-      return;
-    }
+    setIsSubmitting(true);
 
-    const today = new Date();
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const formattedDate = existingReq?.addedDate || `${months[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
+    // Normalize requirement type for backend
+    let reqType = "sell";
+    if (form.status === "Rent/Lease" || form.status === "Paying Guest") {
+      reqType = "rent";
+    }
 
     const payload = {
-      name: form.name,
-      status: form.status,
-      category: form.category,
-      rooms: form.rooms,
-      budgetRange: `${formatCurrency(form.budgetMin)} - ${formatCurrency(form.budgetMax)}`,
-      budgetMin: form.budgetMin,
-      budgetMax: form.budgetMax,
+      customer_name: form.name,
+      contact_number: form.contact,
+      requirement_type: reqType,
+      property_type: form.category,
+      budget_min: form.budgetMin,
+      budget_max: form.budgetMax,
+      preferred_locations: [form.location || "Indore, MP"],
       notes: form.details || "No special requirements",
-      addedDate: formattedDate,
-      contact: form.contact,
-      minArea: form.minArea || "null",
-      maxArea: form.maxArea || "2000",
-      unit: form.unit,
-      location: form.location || "Indore, MP",
-      isVerified: true,
     };
 
-    if (isEdit) {
-      dispatch(updateRequirement({ id: Number(id), ...payload }));
-    } else {
-      dispatch(addRequirement(payload));
+    try {
+      if (isEdit) {
+        await dispatch(updateRequirementApi({ id, payload })).unwrap();
+      } else {
+        await dispatch(createRequirement(payload)).unwrap();
+      }
+      router.back();
+    } catch (err) {
+      alert(err || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    router.back();
   };
 
   const Chip = ({ label, selected, onPress }) => (
@@ -503,16 +507,20 @@ export default function AddCustomerRequirement() {
           {/* Submit Button */}
           <Pressable
             onPress={handleSubmit}
-            disabled={!form.name || !form.contact || !isContactVerified}
+            disabled={!form.name || !form.contact || isSubmitting}
             className={`py-3.5 rounded-full items-center justify-center shadow-lg ${
-              !form.name || !form.contact || !isContactVerified
+              !form.name || !form.contact || isSubmitting
                 ? "bg-gray-300 shadow-gray-300/30" 
                 : "bg-[#4A43EC] shadow-blue-500/30"
             }`}
           >
-            <Text className={`font-lato-bold text-sm ${!form.name || !form.contact || !isContactVerified ? "text-gray-500" : "text-white"}`}>
-              {isEdit ? "Update" : "Submit"}
-            </Text>
+            {isSubmitting ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text className={`font-lato-bold text-sm ${!form.name || !form.contact ? "text-gray-500" : "text-white"}`}>
+                {isEdit ? "Update" : "Submit"}
+              </Text>
+            )}
           </Pressable>
         </View>
       </ScrollView>

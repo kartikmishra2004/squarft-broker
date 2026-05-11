@@ -3,22 +3,35 @@ import { View, Text, Pressable, ScrollView, StatusBar, TextInput } from 'react-n
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import { walletData } from '../../data/wallet';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchTransactions } from '../../store/slices/walletSlice';
 
 const TransactionsScreen = () => {
+    const dispatch = useDispatch();
     const router = useRouter();
     const bottomSheetModalRef = useRef(null);
+    const { transactions, loading } = useSelector((state) => state.wallet);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [searchText, setSearchText] = useState("");
 
+    React.useEffect(() => {
+        dispatch(fetchTransactions());
+    }, [dispatch]);
+
     const filteredTransactions = useMemo(() => {
-        if (!searchText) return walletData.transactions;
-        return walletData.transactions.filter(item =>
-            item.title.toLowerCase().includes(searchText.toLowerCase()) ||
-            item.location?.toLowerCase().includes(searchText.toLowerCase()) ||
-            item.amount.toLowerCase().includes(searchText.toLowerCase())
+        if (!searchText) return transactions;
+        return transactions.filter(item =>
+            (item.property_name || 'Commission').toLowerCase().includes(searchText.toLowerCase()) ||
+            item.type.toLowerCase().includes(searchText.toLowerCase()) ||
+            item.amount.toString().includes(searchText)
         );
-    }, [searchText]);
+    }, [searchText, transactions]);
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return "";
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
 
     const snapPoints = useMemo(() => ['45%'], []);
 
@@ -77,11 +90,13 @@ const TransactionsScreen = () => {
                             className="flex-row items-center justify-between py-3.5 border-b border-gray-50"
                         >
                             <View>
-                                <Text className="text-[12px] font-manrope-bold text-[#272727]">{item.title}</Text>
-                                <Text className="text-[9px] text-gray-400 font-manrope-medium mt-1">{item.date}</Text>
+                                <Text className="text-[12px] font-manrope-bold text-[#272727]">{item.property_name || 'Commission'}</Text>
+                                <Text className="text-[9px] text-gray-400 font-manrope-medium mt-1">{formatDate(item.created_at)}</Text>
                             </View>
                             <View className="flex-row items-center">
-                                <Text className="text-[#22C55E] text-[12px] font-manrope-bold mr-2">{item.amount}</Text>
+                                <Text className={`${item.type === 'credit' ? 'text-[#22C55E]' : 'text-[#EF4444]'} text-[12px] font-manrope-bold mr-2`}>
+                                    {item.type === 'credit' ? '+' : '-'}₹{Number(item.amount).toLocaleString('en-IN')}
+                                </Text>
                                 <Ionicons name="chevron-forward" size={14} color="#9CA3AF" />
                             </View>
                         </Pressable>
@@ -114,7 +129,7 @@ const TransactionsScreen = () => {
                     <Text className="text-gray-400 font-manrope-medium mb-5 text-[11px]">{selectedTransaction?.location}</Text>
 
                     <View className="bg-[#E8F9EE] rounded-[12px] py-3 items-center mb-5">
-                        <Text className="text-[#22C55E] text-[20px] font-manrope-extrabold">{selectedTransaction?.amount}</Text>
+                        <Text className="text-[#22C55E] text-[20px] font-manrope-extrabold">₹{Number(selectedTransaction?.amount).toLocaleString('en-IN')}</Text>
                     </View>
 
                     <View className="bg-white border border-gray-100 rounded-[14px] p-3.5 mb-3.5" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 5 }}>

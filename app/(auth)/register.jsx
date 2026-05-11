@@ -5,13 +5,14 @@ import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { setName, setMobile, setPassword, setConfirmPassword, setOtpFlow, setProfileImage, clearProfileImage } from "../../store/slices/authSlice";
+import { setName, setMobile, setPassword, setConfirmPassword, setOtpFlow, setProfileImage, clearProfileImage, sendOtpApi, clearError, registerUser, loginUser } from "../../store/slices/authSlice";
+import { ActivityIndicator } from "react-native";
 
 const logo = require("../../assets/icons/app-icon.png");
 
 export default function Register() {
     const dispatch = useDispatch();
-    const { name, mobile, password, confirmPassword, profileImage } = useSelector((state) => state.auth);
+    const { name, mobile, password, confirmPassword, profileImage, loading, error } = useSelector((state) => state.auth);
     const [showConfirm, setShowConfirm] = useState(false);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [fieldOffsets, setFieldOffsets] = useState({});
@@ -76,10 +77,44 @@ export default function Register() {
         );
     };
 
-    const handleRegister = () => {
-        dispatch(setOtpFlow('register'));
-        router.push("/otp-verification");
+    const handleRegister = async () => {
+        if (!name || !mobile || !password || !confirmPassword) {
+            alert("Please fill all fields");
+            return;
+        }
+        if (password !== confirmPassword) {
+            alert("Passwords do not match");
+            return;
+        }
+
+        try {
+            const [first_name, ...last_name_parts] = name.split(' ');
+            const last_name = last_name_parts.join(' ') || ' ';
+            
+            // Register Directly
+            await dispatch(registerUser({
+                phone: mobile,
+                password: password,
+                first_name,
+                last_name,
+            })).unwrap();
+
+            // Auto-login
+            const loginResult = await dispatch(loginUser({ phone: mobile, password })).unwrap();
+            if (loginResult.token) {
+                router.replace("/(tabs)/home");
+            }
+        } catch (err) {
+            alert(err || "Registration failed");
+        }
     };
+
+    useEffect(() => {
+        if (error) {
+            alert(error);
+            dispatch(clearError());
+        }
+    }, [error]);
 
     return (
         <View className="flex-1">
@@ -89,7 +124,7 @@ export default function Register() {
                 <View style={{ width: 70, height: 70, overflow: 'hidden' }} className="mb-2 self-start">
                     <Image source={logo} style={{ width: 120, height: 120, marginTop: -20, marginLeft: -28 }} resizeMode="contain" />
                 </View>
-                <Text className="text-white text-[36px] font-bold mb-3">Login</Text>
+                <Text className="text-white text-[36px] font-bold mb-3">Register</Text>
                 <View className="flex-row items-center">
                     <Text className="text-white/80 text-[14px]">Already have an account? </Text>
                     <Link href="/login">
@@ -188,9 +223,14 @@ export default function Register() {
 
                 <TouchableOpacity
                     onPress={handleRegister}
-                    className="bg-[#4A43EC] rounded-2xl py-4 items-center"
+                    disabled={loading}
+                    className={`bg-[#4A43EC] rounded-2xl py-4 items-center ${loading ? 'opacity-70' : ''}`}
                 >
-                    <Text className="text-white text-[16px] font-semibold">Register</Text>
+                    {loading ? (
+                        <ActivityIndicator color="white" />
+                    ) : (
+                        <Text className="text-white text-[16px] font-semibold">Register</Text>
+                    )}
                 </TouchableOpacity>
             </ScrollView>
         </View>

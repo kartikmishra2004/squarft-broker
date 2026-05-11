@@ -4,12 +4,13 @@ import { Link, router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
-import { setMobile, setPassword, toggleRememberMe, setLoggedIn } from "../../store/slices/authSlice";
+import { setMobile, setPassword, toggleRememberMe, loginUser, clearError } from "../../store/slices/authSlice";
+import { ActivityIndicator } from "react-native";
 const logo = require("../../assets/icons/app-icon.png");
 
 export default function Login() {
     const dispatch = useDispatch();
-    const { mobile, password, rememberMe } = useSelector((state) => state.auth);
+    const { mobile, password, rememberMe, loading, error } = useSelector((state) => state.auth);
     const [showPassword, setShowPassword] = useState(false);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [fieldOffsets, setFieldOffsets] = useState({});
@@ -47,11 +48,28 @@ export default function Login() {
         setFieldOffsets((prev) => ({ ...prev, [fieldKey]: y }));
     };
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
+        if (!mobile || !password) {
+            alert("Please enter mobile number and password");
+            return;
+        }
 
-        dispatch(setLoggedIn(true));
-        router.replace("/(tabs)/home");
+        try {
+            const result = await dispatch(loginUser({ phone: mobile, password })).unwrap();
+            if (result.token) {
+                router.replace("/(tabs)/home");
+            }
+        } catch (err) {
+            alert(err || "Login failed");
+        }
     };
+
+    useEffect(() => {
+        if (error) {
+            alert(error);
+            dispatch(clearError());
+        }
+    }, [error]);
 
     return (
         <View className="flex-1">
@@ -139,9 +157,14 @@ export default function Login() {
 
                         <TouchableOpacity
                             onPress={handleLogin}
-                            className="bg-[#4A43EC] rounded-2xl py-4 items-center mb-8"
+                            disabled={loading}
+                            className={`bg-[#4A43EC] rounded-2xl py-4 items-center mb-8 ${loading ? 'opacity-70' : ''}`}
                         >
-                            <Text className="text-white text-[16px] font-lato-bold">Log In</Text>
+                            {loading ? (
+                                <ActivityIndicator color="white" />
+                            ) : (
+                                <Text className="text-white text-[16px] font-lato-bold">Log In</Text>
+                            )}
                         </TouchableOpacity>
 
                     </ScrollView>
