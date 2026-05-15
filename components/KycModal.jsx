@@ -12,7 +12,6 @@ const KycModal = () => {
     const pathname = usePathname();
     const { isKycCompleted, isLoggedIn } = useSelector((state) => state.auth);
 
-    // If already completed, not logged in, or on the KYC screen, hide the modal
     if (isKycCompleted || !isLoggedIn || pathname.includes('kyc')) {
         return null;
     }

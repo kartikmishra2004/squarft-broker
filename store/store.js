@@ -6,6 +6,8 @@ import notificationSlice from './slices/notificationSlice';
 import myAddedSlice from './slices/myAddedSlice';
 import documentSlice from './slices/documentSlice';
 import walletSlice from './slices/walletSlice';
+import brokerSlice from './slices/brokerSlice';
+import projectSlice from './slices/projectSlice';
 
 export const store = configureStore({
     reducer: {
@@ -16,5 +18,7 @@ export const store = configureStore({
         myAdded: myAddedSlice,
         documents: documentSlice,
         wallet: walletSlice,
+        broker: brokerSlice,
+        project: projectSlice,
     },
 });

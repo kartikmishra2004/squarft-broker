@@ -1,16 +1,18 @@
-import { View, Text, Pressable, StatusBar, Platform, ScrollView, Image } from "react-native";
+import { View, Text, Pressable, StatusBar, Platform, ScrollView, Image, ActivityIndicator } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect } from "react";
-import { markAllAsWatched, markAsWatched } from "../../store/slices/notificationSlice";
+import { markAllAsWatched, markAsWatched, fetchNotifications } from "../../store/slices/notificationSlice";
 
 export default function Notifications() {
   const router = useRouter();
   const dispatch = useDispatch();
   const notifications = useSelector((state) => state.notifications?.list || []);
+  const loading = useSelector((state) => state.notifications?.loading || false);
 
   useEffect(() => {
+    dispatch(fetchNotifications());
   }, []);
 
   const getIcon = (type) => {
@@ -69,7 +71,11 @@ export default function Notifications() {
         </Pressable>
       </View>
 
-      {notifications.length === 0 ? (
+      {loading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#4A43EC" />
+        </View>
+      ) : notifications.length === 0 ? (
         <View className="flex-1 items-center justify-center px-10 -mt-20">
           <Image
             source={require("../../assets/images/Ilustration mailbox.png")}

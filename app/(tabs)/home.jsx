@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Image,
   Platform,
@@ -12,25 +12,33 @@ import {
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { categoriesData, upcomingProjectsData } from "../../data/properties";
+import { fetchBrokerStats, fetchMyProjects } from "../../store/slices/brokerSlice";
 
 const { width } = Dimensions.get("window");
-
-const stats = [
-  { label: "Total Visitor", count: 123 },
-  { label: "Total Sale", count: 45 },
-  { label: "Pending", count: 34 },
-  { label: "Rejected", count: 14 },
-];
 
 const mainTabs = ["SELL"];
 const buyFilter = "BUY";
 
-
 export default function Home() {
   const [activeFilter, setActiveFilter] = useState("SELL");
+  const dispatch = useDispatch();
   const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
+  const brokerStats = useSelector(state => state.broker?.stats);
+  const apiProjects = useSelector(state => state.broker?.projects || []);
+
+  useEffect(() => {
+    dispatch(fetchBrokerStats());
+    dispatch(fetchMyProjects());
+  }, []);
+
+  const stats = [
+    { label: "Total Properties", count: brokerStats?.total_properties ?? 0 },
+    { label: "Total Sale",       count: brokerStats?.sales            ?? 0 },
+    { label: "Pending",          count: brokerStats?.pending          ?? 0 },
+    { label: "Rejected",         count: brokerStats?.rejected         ?? 0 },
+  ];
 
   const categories = useMemo(() => {
     return categoriesData[activeFilter] || [];
@@ -38,8 +46,9 @@ export default function Home() {
 
 
   const projects = useMemo(() => {
+    if (apiProjects.length > 0) return apiProjects;
     return upcomingProjectsData;
-  }, []);
+  }, [apiProjects]);
 
   const handleFilterPress = (filter) => {
     if (filter === "BUY") {
@@ -204,22 +213,28 @@ export default function Home() {
           >
             {projects.map((project, index) => (
               <View
-                key={project.id}
+                key={project.id || index}
                 className="w-[290px] flex-row bg-[#F4F7FF] rounded-lg overflow-hidden mr-[15px] h-[110px]"
               >
-                <Image source={project.image} className="w-[35%] h-full" resizeMode="cover" />
+                {project.image ? (
+                  <Image source={project.image} className="w-[35%] h-full" resizeMode="cover" />
+                ) : (
+                  <View className="w-[35%] h-full bg-[#D8DBEF] items-center justify-center">
+                    <Ionicons name="business-outline" size={28} color="#4A43EC" />
+                  </View>
+                )}
                 <View className="flex-1 p-2.5 justify-center border-2 border-[#4A43EC] border-l-0 rounded-r-lg">
                   <Text className="text-sm text-black font-lato-bold mb-0.5" numberOfLines={1}>
-                    {project.title}
+                    {project.title || project.name || 'Unnamed Project'}
                   </Text>
                   <Text className="text-[10px] text-gray-400 font-lato-regular mb-1">
-                    {project.developer}
+                    {project.developer || project.location || ''}
                   </Text>
                   <Text className="text-[9px] text-gray-500 font-lato-regular mb-2 leading-3">
-                    {project.description}
+                    {project.description || ''}
                   </Text>
                   <Text className="text-sm text-black font-lato-bold">
-                    {project.price}
+                    {project.price || ''}
                   </Text>
                 </View>
               </View>

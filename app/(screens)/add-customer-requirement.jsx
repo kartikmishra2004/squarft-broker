@@ -63,7 +63,7 @@ export default function AddCustomerRequirement() {
     status: "Buy",
     category: "House",
     minArea: "",
-    maxArea: "2000",
+    maxArea: "",
     unit: "Square Feet (Sq. ft)",
     name: "",
     contact: "",
@@ -88,14 +88,17 @@ export default function AddCustomerRequirement() {
       let uiStatus = "Buy";
       if (existingReq.requirement_type === "rent") {
         uiStatus = "Rent/Lease";
+      } else if (existingReq.requirement_type === "paying_guest") {
+        uiStatus = "Paying Guest";
       }
+      // "sell" and "buy" both map back to "Buy"
 
       setForm({
         status: uiStatus,
         category: existingReq.property_type || "House",
-        minArea: "", 
-        maxArea: "2000",
-        unit: "Square Feet (Sq. ft)",
+        minArea: existingReq.min_area ? String(existingReq.min_area) : "",
+        maxArea: existingReq.max_area ? String(existingReq.max_area) : "2000",
+        unit: existingReq.area_unit || "Square Feet (Sq. ft)",
         name: existingReq.customer_name || "",
         contact: existingReq.contact_number || "",
         location: existingReq.preferred_locations?.[0] || "",
@@ -104,12 +107,12 @@ export default function AddCustomerRequirement() {
         details: existingReq.notes || "",
         rooms: "N/A",
       });
-      
+
       const minPerc = ((existingReq.budget_min || MIN_VALUE) - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
       const maxPerc = ((existingReq.budget_max || 10000000) - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
       setSliderMin(Math.max(0, minPerc));
       setSliderMax(Math.min(1, maxPerc));
-      
+
       dispatch(setContactVerified(true));
     } else {
       dispatch(setContactVerified(false));
@@ -210,20 +213,25 @@ export default function AddCustomerRequirement() {
     setIsSubmitting(true);
 
     // Normalize requirement type for backend
-    let reqType = "sell";
-    if (form.status === "Rent/Lease" || form.status === "Paying Guest") {
+    let reqType = "buy";
+    if (form.status === "Rent/Lease") {
       reqType = "rent";
+    } else if (form.status === "Paying Guest") {
+      reqType = "paying_guest";
     }
 
     const payload = {
-      customer_name: form.name,
-      contact_number: form.contact,
+      customer_name: form.name.trim(),
+      contact_number: form.contact.trim(),
       requirement_type: reqType,
       property_type: form.category,
       budget_min: form.budgetMin,
       budget_max: form.budgetMax,
-      preferred_locations: [form.location || "Indore, MP"],
-      notes: form.details || "No special requirements",
+      preferred_locations: form.location.trim() ? [form.location.trim()] : [],
+      notes: form.details.trim() || null,
+      min_area: form.minArea ? Number(form.minArea) : null,
+      max_area: form.maxArea ? Number(form.maxArea) : null,
+      area_unit: form.unit || null,
     };
 
     try {
@@ -316,7 +324,7 @@ export default function AddCustomerRequirement() {
               <Text className="text-[11px] text-gray-500 mb-2">Min Area (Optional)</Text>
               <TextInput
                 placeholder="null"
-                className="bg-white border border-gray-300 rounded-lg px-3 h-10 text-sm font-lato-regular"
+                className="bg-white border border-gray-300 rounded-lg px-3 h-12 text-sm font-lato-regular"
                 value={form.minArea}
                 onChangeText={(text) => setForm({ ...form, minArea: text })}
                 onFocus={() => handleFocus("area")}
@@ -326,7 +334,7 @@ export default function AddCustomerRequirement() {
               <Text className="text-[11px] text-gray-500 mb-2">Max Area (Optional)</Text>
               <TextInput
                 placeholder="2000"
-                className="bg-white border border-gray-300 rounded-lg px-3 h-10 text-sm font-lato-regular"
+                className="bg-white border border-gray-300 rounded-lg px-3 h-12 text-sm font-lato-regular"
                 value={form.maxArea}
                 onChangeText={(text) => setForm({ ...form, maxArea: text })}
                 onFocus={() => handleFocus("area")}
@@ -406,22 +414,18 @@ export default function AddCustomerRequirement() {
           </View>
 
           {/* Preferred Location */}
-          <View className="mb-5">
-             <Pressable 
-               onPress={() => {
-                 const locations = ["Indore, MP", "Mumbai, MH", "Bangalore, KA", "Delhi, NCR", "Pune, MH", "Bhopal, MP"];
-                 const randomLoc = locations[Math.floor(Math.random() * locations.length)];
-                 setForm({ ...form, location: randomLoc });
-                 Keyboard.dismiss();
-               }}
-               className="flex-row items-center border border-gray-300 rounded-lg px-3 h-12"
-             >
-               <Ionicons name="location" size={18} color="#4A43EC" />
-               <Text className={`flex-1 ml-2 text-sm font-lato-regular ${form.location ? "text-black" : "text-gray-400"}`}>
-                 {form.location || "Select preferred location"}
-               </Text>
-               <Ionicons name="add" size={24} color="gray" />
-             </Pressable>
+          <View className="mb-5" onLayout={(e) => handleFieldLayout("location", e)}>
+            <Text className="text-sm font-lato-bold mb-2">Preferred Location</Text>
+            <View className="flex-row items-center border border-gray-300 rounded-lg px-3 h-12">
+              <Ionicons name="location" size={18} color="#4A43EC" />
+              <TextInput
+                placeholder="Enter preferred location"
+                className="flex-1 ml-2 text-sm font-lato-regular"
+                value={form.location}
+                onChangeText={(text) => setForm({ ...form, location: text })}
+                onFocus={() => handleFocus("location")}
+              />
+            </View>
           </View>
 
           {/* Budget Range Slider */}

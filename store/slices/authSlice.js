@@ -1,6 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.31.27:3001';
+
+// Load token from storage on app start
+export const loadToken = createAsyncThunk('auth/loadToken', async () => {
+    const token = await AsyncStorage.getItem('auth_token');
+    return token;
+});
 
 // Async Thunks
 export const loginUser = createAsyncThunk(
@@ -85,6 +92,60 @@ export const verifyOtpApi = createAsyncThunk(
     }
 );
 
+export const uploadKyc = createAsyncThunk(
+    'auth/uploadKyc',
+    async ({ aadharFront, aadharBack, panCard, profilePhoto, aadharNumber, panNumber }, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            const existingKyc = getState().auth.kyc;
+            const method = existingKyc ? 'PATCH' : 'POST';
+            console.log('[uploadKyc] token:', token ? token.substring(0, 20) + '...' : 'NULL');
+            console.log('[uploadKyc] method:', method, '| existingKyc:', !!existingKyc);
+
+            const formData = new FormData();
+            const toFile = (asset, name) => ({
+                uri: asset.uri,
+                name: asset.fileName || `${name}.jpg`,
+                type: asset.mimeType || 'image/jpeg',
+            });
+            if (profilePhoto) formData.append('profile_photo', toFile(profilePhoto, 'profile_photo'));
+            if (aadharFront)  formData.append('aadhar_front',  toFile(aadharFront,  'aadhar_front'));
+            if (aadharBack)   formData.append('aadhar_back',   toFile(aadharBack,   'aadhar_back'));
+            if (panCard)      formData.append('pan_card',      toFile(panCard,      'pan_card'));
+            if (aadharNumber && typeof aadharNumber === 'string' && aadharNumber.trim()) formData.append('aadhar_number', aadharNumber.trim());
+            if (panNumber    && typeof panNumber    === 'string' && panNumber.trim())    formData.append('pan_number',    panNumber.trim());
+            const response = await fetch(`${API_BASE_URL}/api/v1/broker/kyc`, {
+                method,
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data.message);
+            return data;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
+export const fetchKyc = createAsyncThunk(
+    'auth/fetchKyc',
+    async (_, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            const response = await fetch(`${API_BASE_URL}/api/v1/broker/kyc`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (response.status === 404) return null;
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data.message);
+            return data.data;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
 const authSlice = createSlice({
     name: 'auth',
     initialState: {
@@ -105,6 +166,7 @@ const authSlice = createSlice({
         error: null,
         otpToken: null,
         verifiedToken: null,
+        kyc: null,
     },
     reducers: {
         setName: (state, action) => { state.name = action.payload; },
@@ -132,6 +194,7 @@ const authSlice = createSlice({
             state.isKycCompleted = false;
             state.token = null;
             state.user = null;
+            AsyncStorage.removeItem('auth_token');
         },
     },
     extraReducers: (builder) => {
@@ -146,6 +209,7 @@ const authSlice = createSlice({
                 state.isLoggedIn = true;
                 state.token = action.payload.token;
                 state.user = action.payload.user;
+                AsyncStorage.setItem('auth_token', action.payload.token);
             })
             .addCase(loginUser.rejected, (state, action) => {
                 state.loading = false;
@@ -172,7 +236,18 @@ const authSlice = createSlice({
             // Verify OTP
             .addCase(verifyOtpApi.fulfilled, (state, action) => {
                 state.verifiedToken = action.payload.verified_token;
-            });
+            })
+            // Load token
+            .addCase(loadToken.fulfilled, (state, action) => {
+                if (action.payload) {
+                    state.token = action.payload;
+                    state.isLoggedIn = true;
+                }
+            })
+            .addCase(uploadKyc.fulfilled, (state) => { state.loading = false; state.isKycCompleted = true; })
+            .addCase(uploadKyc.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
+            // Fetch KYC
+            .addCase(fetchKyc.fulfilled, (state, action) => { state.kyc = action.payload; });
     },
 });
 

@@ -8,12 +8,23 @@ import {
     Image,
     Dimensions,
     TextInput,
+    Alert,
+    ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
+import { useDispatch, useSelector } from "react-redux";
+import {
+    createBasicDetails,
+    updateOwnerDetails,
+    updatePropertyDetails,
+    updateAreaDetails,
+    uploadProjectMedia,
+    resetProject,
+} from "../../store/slices/projectSlice";
 
 const { width } = Dimensions.get("window");
 
@@ -74,7 +85,7 @@ const areaUnits = [
     { id: "sqm",      label: "Square Meter (sq m)", short: "sq m" },
     { id: "acre",     label: "Acre",                short: "Acre" },
     { id: "hectare",  label: "Hectare",             short: "Hect" },
-    { id: "sqyard",   label: "Square Yard (gaj)",   short: "Gaj"  },
+    { id: "gaj",      label: "Square Yard (gaj)",   short: "Gaj"  },
     { id: "bigha",    label: "Bigha",               short: "Bigh" },
     { id: "biswa",    label: "Biswa",               short: "Bisw" },
     { id: "katha",    label: "Katha / Kattha",      short: "Kath" },
@@ -87,6 +98,9 @@ const areaUnits = [
 ];
 
 export default function AddProject() {
+    const dispatch = useDispatch();
+    const { currentProjectId, loading: projectLoading, error: projectError, submitSuccess } = useSelector(state => state.project);
+
     const [currentStep, setCurrentStep] = useState(1);
     const [selectedMainType, setSelectedMainType] = useState(null);
     const [selectedSubType, setSelectedSubType] = useState(null);
@@ -99,6 +113,45 @@ export default function AddProject() {
     const [agreed, setAgreed] = useState(false);
     const [otp, setOtp] = useState(["", "", "", ""]);
     const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+
+    // Step 2 form state
+    const [ownerName, setOwnerName] = useState("");
+    const [ownerContact, setOwnerContact] = useState("");
+    const [ownerEmail, setOwnerEmail] = useState("");
+    const [ownerAddress, setOwnerAddress] = useState("");
+
+    // Step 3 form state
+    const [propertyName, setPropertyName] = useState("");
+    const [towerNumber, setTowerNumber] = useState("");
+    const [flatNumber, setFlatNumber] = useState("");
+    const [locationText, setLocationText] = useState("");
+    const [city, setCity] = useState("");
+    const [stateText, setStateText] = useState("");
+    const [pincode, setPincode] = useState("");
+    const [nearbyProject, setNearbyProject] = useState("");
+    const [khasraNumber, setKhasraNumber] = useState("");
+    const [propertyAge, setPropertyAge] = useState("");
+    const [totalAreaValue, setTotalAreaValue] = useState("");
+    const [carpetAreaValue, setCarpetAreaValue] = useState("");
+
+    // Step 4 form state
+    const [sellingPrice, setSellingPrice] = useState("");
+
+    // Show error from project slice
+    useEffect(() => {
+        if (projectError) {
+            Alert.alert("Error", projectError);
+        }
+    }, [projectError]);
+
+    // On submit success
+    useEffect(() => {
+        if (submitSuccess) {
+            Alert.alert("Success", "Project submitted successfully!", [
+                { text: "OK", onPress: () => { dispatch(resetProject()); router.back(); } }
+            ]);
+        }
+    }, [submitSuccess]);
 
     // Area unit state
     const [totalAreaUnit, setTotalAreaUnit] = useState(areaUnits[0]);
@@ -257,7 +310,7 @@ export default function AddProject() {
                         >
                             <Ionicons name="arrow-back" size={20} color="white" />
                         </TouchableOpacity>
-                        <Text className="text-white text-base font-lato-bold">Add Project</Text>
+                        <Text className="text-white text-base font-lato-bold">Add Properties</Text>
                         <View style={{ width: 20 }} />
                     </View>
 
@@ -403,7 +456,17 @@ export default function AddProject() {
                                         className="py-4 rounded-xl items-center"
                                         style={{ backgroundColor: step1Valid ? "#4A43EC" : "#C5C3F5" }}
                                         activeOpacity={step1Valid ? 0.8 : 1}
-                                        onPress={() => { if (step1Valid) setCurrentStep(prev => prev + 1); }}
+                                        onPress={async () => {
+                                            if (!step1Valid) return;
+                                            try {
+                                                await dispatch(createBasicDetails({
+                                                    category: selectedMainType,
+                                                    property_type: selectedSubType,
+                                                    property_subtype: selectedBhk !== "1bhk" ? selectedBhk : undefined,
+                                                })).unwrap();
+                                                setCurrentStep(prev => prev + 1);
+                                            } catch (_) {}
+                                        }}
                                     >
                                         <Text className="text-white text-sm font-lato-bold">Next</Text>
                                     </TouchableOpacity>
@@ -418,6 +481,8 @@ export default function AddProject() {
                                         className="bg-white border border-gray-300 rounded-xl px-4 py-4 text-sm text-gray-800 font-lato-medium"
                                         placeholder="Enter Owner Name"
                                         placeholderTextColor="#c0c0c0ff"
+                                        value={ownerName}
+                                        onChangeText={setOwnerName}
                                     />
                                 </View>
 
@@ -430,6 +495,8 @@ export default function AddProject() {
                                             placeholder="eg. 8120180101"
                                             placeholderTextColor="#C0C0C0"
                                             keyboardType="phone-pad"
+                                            value={ownerContact}
+                                            onChangeText={setOwnerContact}
                                         />
                                         <TouchableOpacity>
                                             <Text className="text-xs font-lato-bold text-[#4A43EC]">Send / Resend OTP</Text>
@@ -471,6 +538,8 @@ export default function AddProject() {
                                         placeholderTextColor="#C0C0C0"
                                         keyboardType="email-address"
                                         autoCapitalize="none"
+                                        value={ownerEmail}
+                                        onChangeText={setOwnerEmail}
                                     />
                                 </View>
 
@@ -482,6 +551,8 @@ export default function AddProject() {
                                             className="flex-1 text-sm text-gray-800 font-lato-medium"
                                             placeholder="Select Address"
                                             placeholderTextColor="#C0C0C0"
+                                            value={ownerAddress}
+                                            onChangeText={setOwnerAddress}
                                         />
                                         <View className="w-9 h-9 rounded-xl bg-[#d2d0fa] items-center justify-center">
                                             <Ionicons name="locate" size={18} color="#4A43EC" />
@@ -494,9 +565,28 @@ export default function AddProject() {
                                     <TouchableOpacity
                                         className="bg-[#4A43EC] py-4 rounded-xl items-center"
                                         activeOpacity={0.8}
-                                        onPress={() => setCurrentStep(prev => prev + 1)}
+                                        disabled={projectLoading}
+                                        onPress={async () => {
+                                            if (!ownerName.trim() || !ownerContact.trim()) {
+                                                Alert.alert("Required", "Owner name and contact are required.");
+                                                return;
+                                            }
+                                            try {
+                                                await dispatch(updateOwnerDetails({
+                                                    projectId: currentProjectId,
+                                                    owner_name: ownerName.trim(),
+                                                    owner_contact: ownerContact.trim(),
+                                                    owner_email: ownerEmail.trim() || undefined,
+                                                    owner_address: ownerAddress.trim() || undefined,
+                                                })).unwrap();
+                                                setCurrentStep(prev => prev + 1);
+                                            } catch (_) {}
+                                        }}
                                     >
-                                        <Text className="text-white text-sm font-lato-bold">Next</Text>
+                                        {projectLoading
+                                            ? <ActivityIndicator color="white" />
+                                            : <Text className="text-white text-sm font-lato-bold">Next</Text>
+                                        }
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -509,6 +599,8 @@ export default function AddProject() {
                                         className="bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-sm text-gray-800 font-lato-medium"
                                         placeholder="Enter Property name"
                                         placeholderTextColor="#C0C0C0"
+                                        value={propertyName}
+                                        onChangeText={setPropertyName}
                                     />
                                 </View>
 
@@ -521,6 +613,8 @@ export default function AddProject() {
                                             placeholder="Tower no."
                                             placeholderTextColor="#C0C0C0"
                                             keyboardType="numeric"
+                                            value={towerNumber}
+                                            onChangeText={setTowerNumber}
                                         />
                                         <TextInput
                                             style={{ width: (width - 52) / 2 }}
@@ -528,6 +622,8 @@ export default function AddProject() {
                                             placeholder="Flat no."
                                             placeholderTextColor="#C0C0C0"
                                             keyboardType="numeric"
+                                            value={flatNumber}
+                                            onChangeText={setFlatNumber}
                                         />
                                     </View>
                                     <Text className="text-[10px] text-gray-800 font-lato-medium mt-1 text-right">tower no . is only  for flat</Text>
@@ -541,6 +637,8 @@ export default function AddProject() {
                                             className="flex-1 text-sm text-gray-800 font-lato-medium"
                                             placeholder="Address & Landmark"
                                             placeholderTextColor="#C0C0C0"
+                                            value={locationText}
+                                            onChangeText={setLocationText}
                                         />
                                         <View className="w-9 h-9 rounded-xl bg-[#d2d0fa] items-center justify-center">
                                             <Ionicons name="locate" size={18} color="#4A43EC" />
@@ -548,7 +646,6 @@ export default function AddProject() {
                                     </View>
                                 </View>
 
-                               
                                 <View>
                                     <View className="flex-row gap-2 pt-2">
                                         <View style={{ flex: 1 }}>
@@ -557,6 +654,8 @@ export default function AddProject() {
                                                 className="bg-white border border-gray-200 rounded-xl px-3 py-4 text-sm text-gray-800 font-lato-medium"
                                                 placeholder="city"
                                                 placeholderTextColor="#C0C0C0"
+                                                value={city}
+                                                onChangeText={setCity}
                                             />
                                         </View>
                                         <View style={{ flex: 1 }}>
@@ -565,6 +664,8 @@ export default function AddProject() {
                                                 className="bg-white border border-gray-200 rounded-xl px-3 py-4 text-sm text-gray-800 font-lato-medium"
                                                 placeholder="state"
                                                 placeholderTextColor="#C0C0C0"
+                                                value={stateText}
+                                                onChangeText={setStateText}
                                             />
                                         </View>
                                         <View style={{ flex: 1 }}>
@@ -574,6 +675,8 @@ export default function AddProject() {
                                                 placeholder="pincode"
                                                 placeholderTextColor="#C0C0C0"
                                                 keyboardType="number-pad"
+                                                value={pincode}
+                                                onChangeText={setPincode}
                                             />
                                         </View>
                                     </View>
@@ -587,6 +690,8 @@ export default function AddProject() {
                                             className="flex-1 text-sm text-gray-800 font-lato-medium"
                                             placeholder="Select Project Near You"
                                             placeholderTextColor="#C0C0C0"
+                                            value={nearbyProject}
+                                            onChangeText={setNearbyProject}
                                         />
                                         <Ionicons name="heart-outline" size={18} color="#C0C0C0" />
                                     </View>
@@ -602,6 +707,8 @@ export default function AddProject() {
                                                 placeholder="eg.1000"
                                                 placeholderTextColor="#C0C0C0"
                                                 keyboardType="numeric"
+                                                value={totalAreaValue}
+                                                onChangeText={setTotalAreaValue}
                                             />
                                             <TouchableOpacity
                                                 onPress={() => openUnitSheet("total")}
@@ -623,6 +730,8 @@ export default function AddProject() {
                                                 placeholder="eg. 200"
                                                 placeholderTextColor="#C0C0C0"
                                                 keyboardType="numeric"
+                                                value={carpetAreaValue}
+                                                onChangeText={setCarpetAreaValue}
                                             />
                                             <TouchableOpacity
                                                 onPress={() => openUnitSheet("carpet")}
@@ -643,6 +752,8 @@ export default function AddProject() {
                                         placeholder="Enter khasra number"
                                         placeholderTextColor="#C0C0C0"
                                         keyboardType="numeric"
+                                        value={khasraNumber}
+                                        onChangeText={setKhasraNumber}
                                     />
                                 </View>
 
@@ -654,17 +765,51 @@ export default function AddProject() {
                                         placeholder="Enter Property age"
                                         placeholderTextColor="#C0C0C0"
                                         keyboardType="numeric"
+                                        value={propertyAge}
+                                        onChangeText={setPropertyAge}
                                     />
                                 </View>
 
-                               
                                 <View className="mt-6 mb-4" style={{ opacity: hasScrolledToBottom ? 1 : 0 }} pointerEvents={hasScrolledToBottom ? "auto" : "none"}>
                                     <TouchableOpacity
                                         className="bg-[#4A43EC] py-4 rounded-xl items-center"
                                         activeOpacity={0.8}
-                                        onPress={() => setCurrentStep(prev => prev + 1)}
+                                        disabled={projectLoading}
+                                        onPress={async () => {
+                                            if (!city.trim() || !stateText.trim()) {
+                                                Alert.alert("Required", "City and State are required.");
+                                                return;
+                                            }
+                                            try {
+                                                await dispatch(updatePropertyDetails({
+                                                    projectId: currentProjectId,
+                                                    name: propertyName || undefined,
+                                                    tower_number: towerNumber || undefined,
+                                                    flat_number: flatNumber || undefined,
+                                                    location: locationText || undefined,
+                                                    city: city.trim(),
+                                                    state: stateText.trim(),
+                                                    pincode: pincode || undefined,
+                                                    nearby_project: nearbyProject || undefined,
+                                                    khasra_number: khasraNumber || undefined,
+                                                    property_age: propertyAge ? Number(propertyAge) : undefined,
+                                                })).unwrap();
+                                                if (totalAreaValue || carpetAreaValue) {
+                                                    await dispatch(updateAreaDetails({
+                                                        projectId: currentProjectId,
+                                                        total_area: totalAreaValue ? Number(totalAreaValue) : undefined,
+                                                        carpet_area: carpetAreaValue ? Number(carpetAreaValue) : undefined,
+                                                        area_unit: totalAreaUnit.id,
+                                                    })).unwrap();
+                                                }
+                                                setCurrentStep(prev => prev + 1);
+                                            } catch (_) {}
+                                        }}
                                     >
-                                        <Text className="text-white text-sm font-lato-bold">Next</Text>
+                                        {projectLoading
+                                            ? <ActivityIndicator color="white" />
+                                            : <Text className="text-white text-sm font-lato-bold">Next</Text>
+                                        }
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -729,6 +874,8 @@ export default function AddProject() {
                                             className="flex-1 text-sm text-gray-800 font-lato-medium"
                                             keyboardType="numeric"
                                             placeholderTextColor="#C0C0C0"
+                                            value={sellingPrice}
+                                            onChangeText={setSellingPrice}
                                         />
                                     </View>
                                 </View>
@@ -810,8 +957,30 @@ export default function AddProject() {
                                     <TouchableOpacity
                                         className="bg-[#4A43EC] py-4 rounded-xl items-center"
                                         activeOpacity={0.8}
+                                        disabled={projectLoading}
+                                        onPress={async () => {
+                                            if (!agreed) {
+                                                Alert.alert("Agreement Required", "Please confirm the agreement before submitting.");
+                                                return;
+                                            }
+                                            try {
+                                                await dispatch(uploadProjectMedia({
+                                                    projectId: currentProjectId,
+                                                    images: uploadedImages,
+                                                    documents: uploadedDocs,
+                                                })).unwrap();
+                                            } catch (err) {
+                                                Alert.alert(
+                                                    "Media Upload Failed",
+                                                    `Backend error: "${err}"\n\nProject ID: ${currentProjectId}\n\nThe backend addPropertyMedia controller is checking the 'properties' table instead of 'projects' table. Please fix: change "FROM properties WHERE id = projectId" to "FROM projects WHERE id = projectId" in projectController.js`
+                                                );
+                                            }
+                                        }}
                                     >
-                                        <Text className="text-white text-sm font-lato-bold">Submit</Text>
+                                        {projectLoading
+                                            ? <ActivityIndicator color="white" />
+                                            : <Text className="text-white text-sm font-lato-bold">Submit</Text>
+                                        }
                                     </TouchableOpacity>
                                 </View>
                             </View>
