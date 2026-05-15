@@ -16,6 +16,8 @@ import { fetchRequirementById } from "../../store/slices/requirementsSlice";
 import { LinearGradient } from "expo-linear-gradient";
 import SkeletonLoader from "../../components/SkeletonLoader";
 
+import TabTimeline from "../../components/customerDetails/TabTimeline";
+
 export default function CustomerDetails() {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
@@ -174,6 +176,9 @@ export default function CustomerDetails() {
               {requirement.notes}
             </Text>
           </View>
+
+          {/* Timeline Section */}
+          <TabTimeline />
         </View>
       </ScrollView>
     </View>

@@ -5,12 +5,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useState } from "react";
 import { removeProperty } from "../../store/slices/myAddedSlice";
+import PropertyDetailSheet from "../../components/property/PropertyDetailSheet";
+import { useRef } from "react";
 
-function PropertyCard({ item, onDeletePress }) {
+function PropertyCard({ item, onDeletePress, onPress }) {
     const [menuOpen, setMenuOpen] = useState(false);
 
     return (
-        <View className="flex-row bg-white border border-[#E5E7EB] rounded-[20px] mb-4 p-3 items-start" >
+        <TouchableOpacity 
+            activeOpacity={0.7}
+            onPress={() => onPress?.(item)}
+            className="flex-row bg-white border border-[#E5E7EB] rounded-[20px] mb-4 p-3 items-start" 
+        >
             <Image source={item.image} className="w-[108px] h-[105px] rounded-2xl" resizeMode="cover" />
             <View className="flex-1 ml-2.5">
                 <View className="flex-row items-center mb-0.5">
@@ -70,7 +76,7 @@ function PropertyCard({ item, onDeletePress }) {
                     </View>
                 )}
             </View>
-        </View>
+        </TouchableOpacity>
     );
 }
 
@@ -82,6 +88,8 @@ export default function Favourite() {
     const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
     const [search, setSearch] = useState("");
     const [deleteId, setDeleteId] = useState(null);
+    const [selectedProperty, setSelectedProperty] = useState(null);
+    const [propertySheetVisible, setPropertySheetVisible] = useState(false);
 
     const filtered = properties.filter((p) =>
         p.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -134,7 +142,16 @@ export default function Favourite() {
             <FlatList
                 data={filtered}
                 keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => <PropertyCard item={item} onDeletePress={setDeleteId} />}
+                renderItem={({ item }) => (
+                    <PropertyCard 
+                        item={item} 
+                        onDeletePress={setDeleteId} 
+                        onPress={(prop) => {
+                            setSelectedProperty(prop);
+                            setPropertySheetVisible(true);
+                        }} 
+                    />
+                )}
                 contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 150, paddingTop: 10 }}
                 showsVerticalScrollIndicator={false}
             />
@@ -163,6 +180,12 @@ export default function Favourite() {
                     </View>
                 </View>
             </Modal>
+
+            <PropertyDetailSheet 
+                visible={propertySheetVisible}
+                item={selectedProperty}
+                onClose={() => setPropertySheetVisible(false)}
+            />
         </View>
     );
 }

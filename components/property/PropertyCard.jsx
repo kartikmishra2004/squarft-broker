@@ -1,12 +1,11 @@
 import { View, Text, Image, Pressable } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
-import { router } from 'expo-router';
 
-const PropertyCard = ({ item, propertyTypeLabel }) => {
+const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
     return (
         <Pressable
             className="w-[48.5%] mb-6"
-            onPress={() => router.push({ pathname: "/property-detail", params: { id: item.id } })}
+            onPress={() => onPress?.(item)}
         >
             <View
                 className="w-full border border-gray-100 rounded-[30px]"
