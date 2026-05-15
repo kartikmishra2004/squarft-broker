@@ -12,6 +12,7 @@ import {
   PanResponder,
   Platform,
   Keyboard,
+  Image,
 } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -23,7 +24,41 @@ import { ActivityIndicator } from "react-native";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const PropertyRequirements = ["Buy", "Rent/Lease", "Paying Guest"];
-const PropertyTypes = ["House", "Plots", "Lands", "Warehouse", "Flats", "Store"];
+
+const mainTypes = [
+  {
+    id: "Residential",
+    label: "Residential",
+    image: require("../../assets/icons/property-types/House2.png"),
+    cloudImage: require("../../assets/icons/property-types/Clouds.png"),
+  },
+  {
+    id: "Commercial",
+    label: "Commercial",
+    image: require("../../assets/icons/property-types/commercial.png"),
+  },
+];
+
+const subTypesData = {
+  Residential: [
+    { id: "Plot", label: "Plot", image: require("../../assets/icons/property-types/plot.png") },
+    { id: "Villa", label: "Villa", image: require("../../assets/icons/property-types/villa.png") },
+    { id: "Apartment", label: "Apartment", image: require("../../assets/icons/property-types/apartment.png") },
+    { id: "Rowhouse", label: "Rowhouse", image: require("../../assets/icons/property-types/rowhouse.png") },
+  ],
+  Commercial: [
+    { id: "Shop", label: "Shop", image: require("../../assets/icons/property-types/Shop.png") },
+    { id: "Showroom", label: "Showroom", image: require("../../assets/icons/property-types/showroom.png") },
+    { id: "Office", label: "Office", image: require("../../assets/icons/property-types/office.png") },
+  ]
+};
+
+const subTypeOptions = {
+  Rowhouse: ["1bhk", "2bhk", "3bhk", "4bhk", "5+bhk"],
+  Apartment: ["1bhk", "2bhk", "3bhk", "4bhk", "5+bhk"],
+  Office: ["Ready to move", "Co-working", "Bare shell"],
+};
+
 const Units = [
   "Square Feet (Sq. ft)",
   "Square Meter (Sq. m)",
@@ -59,9 +94,10 @@ export default function AddCustomerRequirement() {
 
   const [otp, setOtp] = useState("");
 
+  const [propertyCategory, setPropertyCategory] = useState("Residential");
   const [form, setForm] = useState({
     status: "Buy",
-    category: "House",
+    category: "Plot",
     minArea: "",
     maxArea: "",
     unit: "Square Feet (Sq. ft)",
@@ -75,6 +111,7 @@ export default function AddCustomerRequirement() {
   });
 
   const [showUnitPicker, setShowUnitPicker] = useState(false);
+  const [showSubTypeDropdown, setShowSubTypeDropdown] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [fieldOffsets, setFieldOffsets] = useState({});
 
@@ -91,13 +128,20 @@ export default function AddCustomerRequirement() {
       } else if (existingReq.requirement_type === "paying_guest") {
         uiStatus = "Paying Guest";
       }
+
+      // Try to determine category based on property_type
+      let category = "Residential";
+      if (["Shop", "Showroom", "Office"].includes(existingReq.property_type)) {
+        category = "Commercial";
+      }
+      setPropertyCategory(category);
       // "sell" and "buy" both map back to "Buy"
 
       setForm({
         status: uiStatus,
-        category: existingReq.property_type || "House",
+        category: existingReq.property_type || "Plot",
         minArea: existingReq.min_area ? String(existingReq.min_area) : "",
-        maxArea: existingReq.max_area ? String(existingReq.max_area) : "2000",
+        maxArea: existingReq.max_area ? String(existingReq.max_area) : "",
         unit: existingReq.area_unit || "Square Feet (Sq. ft)",
         name: existingReq.customer_name || "",
         contact: existingReq.contact_number || "",
@@ -300,18 +344,102 @@ export default function AddCustomerRequirement() {
             ))}
           </View>
 
-          {/* Property Type */}
-          <Text className="text-sm font-lato-bold mb-3">Property Type</Text>
-          <View className="flex-row flex-wrap mb-5">
-            {PropertyTypes.map((item) => (
-              <Chip
-                key={item}
-                label={item}
-                selected={form.category === item}
-                onPress={() => setForm({ ...form, category: item })}
-              />
+          {/* Property Category */}
+          <Text className="text-sm font-lato-bold mb-3">Property Category</Text>
+          <View className="flex-row justify-between mb-8">
+            {mainTypes.map((type) => (
+              <Pressable
+                key={type.id}
+                onPress={() => {
+                  setPropertyCategory(type.id);
+                  setForm({ ...form, category: subTypesData[type.id][0].id });
+                }}
+                style={{ width: (SCREEN_WIDTH - 50) / 2 }}
+                className={`bg-white rounded-xl h-28 border ${propertyCategory === type.id ? 'border-[#4A43EC] bg-[#EEEDFD]' : 'border-gray-100'
+                  } shadow-sm relative overflow-hidden`}
+              >
+                <Text className="text-xs font-lato-bold text-black absolute top-2.5 left-2.5 z-10">{type.label}</Text>
+
+                <View className="flex-1 justify-end items-end">
+                  {type.cloudImage && (
+                    <Image
+                      source={type.cloudImage}
+                      className="absolute top-0 right-3 w-20 h-14 opacity-60"
+                      resizeMode="contain"
+                    />
+                  )}
+                  <Image
+                    source={type.image}
+                    className="w-[80%] h-[70%] mt-auto"
+                    resizeMode="contain"
+                    style={{ marginBottom: -2, marginRight: -4 }}
+                  />
+                </View>
+              </Pressable>
             ))}
           </View>
+
+          {/* Property Type */}
+          <Text className="text-sm font-lato-bold mb-3">Property Type</Text>
+          <View className="flex-row flex-wrap mb-6" style={{ gap: 12 }}>
+            {(subTypesData[propertyCategory] || []).map((type) => (
+              <Pressable
+                key={type.id}
+                onPress={() => {
+                  setForm({ ...form, category: type.id, rooms: "N/A" });
+                  setShowSubTypeDropdown(false);
+                }}
+                style={{ width: (SCREEN_WIDTH - 64) / 4 }}
+                className={`bg-white rounded-lg h-20 border ${form.category === type.id ? 'border-[#4A43EC] bg-[#EEEDFD]' : 'border-gray-100'
+                  } shadow-sm items-center overflow-hidden`}
+              >
+                <Text className={`text-[9px] font-lato-bold mt-1.5 mb-0.5 ${form.category === type.id ? 'text-[#4A43EC]' : 'text-black'}`} numberOfLines={1}>{type.label}</Text>
+                <View className="flex-1 w-full justify-end">
+                  <Image
+                    source={type.image}
+                    className="w-full h-[80%]"
+                    resizeMode="contain"
+                    style={{ marginBottom: -1 }}
+                  />
+                </View>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Sub Type Dropdown (Configuration / Status) */}
+          {form.category && subTypeOptions[form.category] && (
+            <View className="mb-6">
+              <Text className="text-sm font-lato-bold mb-3">Configuration / Status</Text>
+              <Pressable
+                onPress={() => setShowSubTypeDropdown(!showSubTypeDropdown)}
+                className="flex-row items-center border border-gray-300 rounded-xl px-4 h-12 bg-white"
+              >
+                <Text className={`flex-1 text-sm font-lato-regular ${form.rooms !== "N/A" ? "text-black" : "text-gray-400"}`}>
+                  {form.rooms !== "N/A" ? form.rooms : "Select option"}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#6B7280" />
+              </Pressable>
+              {showSubTypeDropdown && (
+                <View
+                  className="border border-gray-200 rounded-xl overflow-hidden bg-white mt-1 mb-1"
+                  style={{ elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 }}
+                >
+                  {subTypeOptions[form.category].map((option, i) => (
+                    <Pressable
+                      key={option}
+                      onPress={() => { 
+                        setForm({ ...form, rooms: option }); 
+                        setShowSubTypeDropdown(false); 
+                      }}
+                      className={`px-4 py-3 ${i < subTypeOptions[form.category].length - 1 ? "border-b border-gray-100" : ""}`}
+                    >
+                      <Text className="text-sm font-lato-regular text-gray-800">{option}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
 
 
           {/* Area Requirement */}
