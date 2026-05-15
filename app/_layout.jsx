@@ -65,7 +65,11 @@ export default function AuthLayout() {
     }, [colorScheme]);
 
     useEffect(() => {
-        if (fontsLoaded) SplashScreen.hideAsync();
+        if (fontsLoaded) {
+            SplashScreen.hideAsync().catch((err) => {
+                console.warn("SplashScreen.hideAsync error:", err);
+            });
+        }
     }, [fontsLoaded]);
 
     if (!fontsLoaded) return null;

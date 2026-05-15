@@ -18,6 +18,7 @@ import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from "@gorhom/botto
 import Slider from "@react-native-community/slider";
 import PropertyCard from "../../components/property/PropertyCard";
 import CategoryTile from "../../components/property/CategoryTile";
+import PropertyDetailSheet from "../../components/property/PropertyDetailSheet";
 
 export default function PropertyType() {
   const { typeId } = useLocalSearchParams();
@@ -38,6 +39,8 @@ export default function PropertyType() {
 
   const bottomSheetRef = useRef(null);
   const snapPoints = useMemo(() => ["65%"], []);
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [propertySheetVisible, setPropertySheetVisible] = useState(false);
 
   useEffect(() => {
     if (typeId) {
@@ -68,6 +71,11 @@ export default function PropertyType() {
   const handleTypePress = (id) => {
     setSelectedTypeId(id);
     setView("list");
+  };
+
+  const handlePropertyPress = (item) => {
+    setSelectedProperty(item);
+    setPropertySheetVisible(true);
   };
 
   const currentTypeLabel = useMemo(() => {
@@ -167,7 +175,7 @@ export default function PropertyType() {
           </View>
 
           <View className="flex-row flex-wrap px-2.5 justify-between">{currentProperties.filtered.map((item) => (
-            <PropertyCard key={item.id} item={item} propertyTypeLabel={currentTypeLabel} />
+            <PropertyCard key={item.id} item={item} propertyTypeLabel={currentTypeLabel} onPress={handlePropertyPress} />
           ))}{currentProperties.filtered.length === 0 && (
             <View className="w-full items-center mt-20 px-8">
               <Text className="text-gray-400 font-lato-medium text-center text-xs">No {statusFilter} properties match your filters</Text>
@@ -249,6 +257,12 @@ export default function PropertyType() {
             </View>
           </BottomSheetView>
         </BottomSheet>
+
+        <PropertyDetailSheet 
+          visible={propertySheetVisible}
+          item={selectedProperty} 
+          onClose={() => setPropertySheetVisible(false)}
+        />
       </View>
     );
   }
@@ -309,7 +323,7 @@ export default function PropertyType() {
 
           <Pressable
             key={item.id}
-            onPress={() => router.push({ pathname: "/property-detail", params: { id: item.id } })}
+            onPress={() => handlePropertyPress(item)}
             className="w-[220px] bg-white rounded-[16px] mr-4 border border-gray-200 overflow-hidden shadow-sm mb-4"
           >
 
