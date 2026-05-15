@@ -140,6 +140,18 @@ const WalletScreen = () => {
                                 </View>
                                 <Text className="text-white text-[9px] font-manrope-medium">Transactions</Text>
                             </Pressable>
+
+                            <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.2)', height: 24 }} />
+
+                            <Pressable
+                                onPress={() => router.push("/(screens)/commission-history")}
+                                className="items-center flex-1"
+                            >
+                                <View className="mb-1">
+                                    <MaterialCommunityIcons name="cash-plus" size={18} color="white" />
+                                </View>
+                                <Text className="text-white text-[9px] font-manrope-medium">Commission</Text>
+                            </Pressable>
                         </View>
                     )}
                 </View>

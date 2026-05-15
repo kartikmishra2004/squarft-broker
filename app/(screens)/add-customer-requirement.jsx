@@ -91,7 +91,6 @@ export default function AddCustomerRequirement() {
       } else if (existingReq.requirement_type === "paying_guest") {
         uiStatus = "Paying Guest";
       }
-      // "sell" and "buy" both map back to "Buy"
 
       setForm({
         status: uiStatus,

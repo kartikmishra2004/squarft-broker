@@ -30,7 +30,24 @@ export const fetchTransactions = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data; // returns { transactions, count, page }
+            return data.data;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
+export const fetchCommissionHistory = createAsyncThunk(
+    'wallet/fetchCommissionHistory',
+    async ({ page = 1, limit = 10 } = {}, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            const response = await fetch(`${API_BASE_URL}/api/v1/broker/wallet/commissionHistory?page=${page}&limit=${limit}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data.message);
+            return data.data;
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -106,6 +123,7 @@ const walletSlice = createSlice({
         totalWithdrawn: 0,
         bankAccounts: [],
         transactions: [],
+        commissions: [],
         loading: false,
         error: null,
         transactionCount: 0,
@@ -149,6 +167,18 @@ const walletSlice = createSlice({
             // Withdrawal
             .addCase(requestWithdrawalApi.fulfilled, (state, action) => {
                 state.balance -= action.payload.amount;
+            })
+            // Commission History
+            .addCase(fetchCommissionHistory.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(fetchCommissionHistory.fulfilled, (state, action) => {
+                state.loading = false;
+                state.commissions = action.payload?.transactions || [];
+            })
+            .addCase(fetchCommissionHistory.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
             });
     },
 });
