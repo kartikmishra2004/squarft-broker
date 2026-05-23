@@ -62,11 +62,11 @@ export default function PropertyDetailSheet({
 }) {
   const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef(null);
-  const snapPoints = useMemo(() => ["88%"], []);
+  const snapPoints = useMemo(() => ["99%"], []);
   
   const [floorPlanVisible, setFloorPlanVisible] = useState(false);
   const [zoomVisible, setZoomVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState("detail"); // 'detail' or 'followup'
+  const [activeTab, setActiveTab] = useState("detail"); 
 
   useEffect(() => {
     if (visible) {
@@ -117,10 +117,16 @@ export default function PropertyDetailSheet({
         backgroundStyle={{ borderRadius: 28 }}
       >
         <View style={{ flex: 1 }}>
+          {activeTab === "followup" && (
+            <View className="items-center py-3 ">
+              <Text className="text-[16px] font-manrope-bold text-[#0F172A] mb-6">Follow Up</Text>
+            </View>
+          )}
+
           {activeTab === "detail" ? (
             <BottomSheetScrollView
               showsVerticalScrollIndicator={false}
-              className="mx-5 rounded-2xl mb-5 border border-gray-300"
+              className="mx-5 rounded-2xl mb-14 border border-gray-300"
               contentContainerStyle={{ paddingBottom: 16 }}
             >
               {/* Hero Image Section */}
@@ -187,7 +193,7 @@ export default function PropertyDetailSheet({
                     padding: 6,
                   }}
                 >
-                  <Feather name="edit-2" size={18} color="#fff" />
+            
                 </TouchableOpacity>
               </View>
 
@@ -207,20 +213,7 @@ export default function PropertyDetailSheet({
                     <Text className="text-[16px] font-manrope-extrabold text-[#0F172A]">{item.title}</Text>
                     <Text className="text-[15px] font-manrope-bold text-[#4A43EC] mt-0.5">{priceFormatted}</Text>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => setFloorPlanVisible(!floorPlanVisible)}
-                    className="flex-row items-center gap-1.5 rounded-xl px-3 py-3"
-                    style={{ 
-                      backgroundColor: floorPlanVisible ? "#4A43EC" : "#DAE2FF",
-                      borderWidth: 1,
-                      borderColor: floorPlanVisible ? "#4A43EC" : "#C7D2FF"
-                    }}
-                  >
-                    <MaterialCommunityIcons name="floor-plan" size={14} color={floorPlanVisible ? "#fff" : "#4A43EC"} />
-                    <Text className="text-[12px] font-manrope-bold" style={{ color: floorPlanVisible ? "#fff" : "#4A43EC" }}>
-                      {floorPlanVisible ? "Hide Floor Plan" : "See Floor Plan"}
-                    </Text>
-                  </TouchableOpacity>
+              
                 </View>
 
                 {floorPlanVisible && (
@@ -272,7 +265,7 @@ export default function PropertyDetailSheet({
               contentContainerStyle={{ paddingBottom: 20 }}
             >
               {followUpsData.map((f) => (
-                <View key={f.id} className="bg-white border border-gray-100 rounded-[18px] p-4 mb-3" style={{ elevation: 2, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 10 }}>
+                <View key={f.id} className="bg-white border border-gray-100 rounded-[18px] p-4 mb-3" style={{ elevation: 1, shadowColor: '#8d8c8cff', shadowOpacity: 0.03, shadowRadius: 2 }}>
                   <View className="flex-row items-center justify-between mb-2">
                     <View className="flex-row items-center gap-2">
                       <View className="px-2.5 py-0.5 rounded-full" style={{ backgroundColor: f.statusBg }}>
@@ -285,12 +278,12 @@ export default function PropertyDetailSheet({
                   <Text className="text-[14px] font-manrope-extrabold text-[#0F172A]">{f.customerName}</Text>
                   <Text className="text-[10px] font-manrope-medium text-gray-500 mt-0.5">{f.nextEvent}</Text>
 
-                  <View className="h-[1px] bg-gray-50 w-full my-3" />
+                  <View className="h-[1px] bg-gray-200 w-full my-3" />
 
-                  <Text className="text-[9px] font-manrope-bold text-gray-400 uppercase mb-1.5">Sales Officer</Text>
+                  <Text className="text-[9px] font-manrope-bold text-gray-600 uppercase mb-1.5">Sales Officer</Text>
                   <View className="flex-row items-center gap-2.5">
-                    <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center border border-gray-100">
-                      <Text className="text-[10px] font-manrope-bold text-gray-500">{f.officerInitials}</Text>
+                    <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center border border-gray-400">
+                      <Text className="text-[10px] font-manrope-bold text-gray-800 ">{f.officerInitials}</Text>
                     </View>
                     <Text className="text-[12px] font-manrope-bold text-[#333]">{f.salesOfficer}</Text>
                   </View>
@@ -312,8 +305,7 @@ export default function PropertyDetailSheet({
             >
               <Text className="text-[14px] font-manrope-bold" style={{ color: activeTab === "detail" ? "#fff" : "#4A43EC" }}>Property Detail</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
+       <TouchableOpacity
               onPress={() => setActiveTab("followup")}
               className="flex-1 rounded-2xl py-4 items-center justify-center"
               style={{ 

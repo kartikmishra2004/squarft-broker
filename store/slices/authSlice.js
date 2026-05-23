@@ -94,13 +94,22 @@ export const verifyOtpApi = createAsyncThunk(
 
 export const uploadKyc = createAsyncThunk(
     'auth/uploadKyc',
-    async ({ aadharFront, aadharBack, panCard, profilePhoto, aadharNumber, panNumber }, { getState, rejectWithValue }) => {
+    async (payload = {}, { getState, rejectWithValue }) => {
         try {
+            const { aadharFront, aadharBack, panCard, profilePhoto, aadharNumber, panNumber } = payload;
             const token = getState().auth.token;
             const existingKyc = getState().auth.kyc;
             const method = existingKyc ? 'PATCH' : 'POST';
             console.log('[uploadKyc] token:', token ? token.substring(0, 20) + '...' : 'NULL');
             console.log('[uploadKyc] method:', method, '| existingKyc:', !!existingKyc);
+            console.log('[uploadKyc] payload:', JSON.stringify({
+                hasAadharFront: !!aadharFront,
+                hasAadharBack: !!aadharBack,
+                hasPanCard: !!panCard,
+                hasProfilePhoto: !!profilePhoto,
+                aadharNumber,
+                panNumber
+            }));
 
             const formData = new FormData();
             const toFile = (asset, name) => ({
@@ -108,21 +117,48 @@ export const uploadKyc = createAsyncThunk(
                 name: asset.fileName || `${name}.jpg`,
                 type: asset.mimeType || 'image/jpeg',
             });
-            if (profilePhoto) formData.append('profile_photo', toFile(profilePhoto, 'profile_photo'));
-            if (aadharFront)  formData.append('aadhar_front',  toFile(aadharFront,  'aadhar_front'));
-            if (aadharBack)   formData.append('aadhar_back',   toFile(aadharBack,   'aadhar_back'));
-            if (panCard)      formData.append('pan_card',      toFile(panCard,      'pan_card'));
-            if (aadharNumber && typeof aadharNumber === 'string' && aadharNumber.trim()) formData.append('aadhar_number', aadharNumber.trim());
-            if (panNumber    && typeof panNumber    === 'string' && panNumber.trim())    formData.append('pan_number',    panNumber.trim());
+            
+            // Only append files if they exist and are not null
+            if (profilePhoto && profilePhoto.uri) {
+                console.log('[uploadKyc] appending profile_photo');
+                formData.append('profile_photo', toFile(profilePhoto, 'profile_photo'));
+            }
+            if (aadharFront && aadharFront.uri) {
+                console.log('[uploadKyc] appending aadhar_front');
+                formData.append('aadhar_front', toFile(aadharFront, 'aadhar_front'));
+            }
+            if (aadharBack && aadharBack.uri) {
+                console.log('[uploadKyc] appending aadhar_back');
+                formData.append('aadhar_back', toFile(aadharBack, 'aadhar_back'));
+            }
+            if (panCard && panCard.uri) {
+                console.log('[uploadKyc] appending pan_card');
+                formData.append('pan_card', toFile(panCard, 'pan_card'));
+            }
+            
+            // ALWAYS append text fields to avoid undefined in req.body
+            // Send empty string if not provided
+            const aadharNum = (aadharNumber && typeof aadharNumber === 'string') ? aadharNumber.trim() : '';
+            const panNum = (panNumber && typeof panNumber === 'string') ? panNumber.trim() : '';
+            
+            console.log('[uploadKyc] appending aadhar_number:', aadharNum || '(empty)');
+            console.log('[uploadKyc] appending pan_number:', panNum || '(empty)');
+            formData.append('aadhar_number', aadharNum);
+            formData.append('pan_number', panNum);
+            
+            console.log('[uploadKyc] making request to:', `${API_BASE_URL}/api/v1/broker/kyc`);
             const response = await fetch(`${API_BASE_URL}/api/v1/broker/kyc`, {
                 method,
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData,
             });
             const data = await response.json();
+            console.log('[uploadKyc] response status:', response.status);
+            console.log('[uploadKyc] response data:', JSON.stringify(data));
             if (!response.ok) return rejectWithValue(data.message);
             return data;
         } catch (err) {
+            console.log('[uploadKyc] caught error:', err.message);
             return rejectWithValue(err.message);
         }
     }

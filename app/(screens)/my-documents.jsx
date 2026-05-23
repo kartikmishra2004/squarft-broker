@@ -55,12 +55,20 @@ export default function MyDocuments() {
         }
         try {
             console.log('[MyDocs] dispatching uploadKyc...');
-            const result = await dispatch(uploadKyc({
-                aadharFront:  files.aadharFront,
-                aadharBack:   files.aadharBack,
-                panCard:      files.panCard,
-                profilePhoto: files.selfie,
-            })).unwrap();
+            
+            // Build payload with all fields, using null for missing values
+            const payload = {
+                aadharFront: files.aadharFront || null,
+                aadharBack: files.aadharBack || null,
+                panCard: files.panCard || null,
+                profilePhoto: files.selfie || null,
+                aadharNumber: null,  // Not collected in this screen
+                panNumber: null,     // Not collected in this screen
+            };
+            
+            console.log('[MyDocs] payload keys:', Object.keys(payload));
+            
+            const result = await dispatch(uploadKyc(payload)).unwrap();
             console.log('[MyDocs] uploadKyc success:', JSON.stringify(result));
             dispatch(setKycCompleted(true));
             await dispatch(fetchKyc());

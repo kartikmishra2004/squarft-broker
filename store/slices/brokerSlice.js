@@ -29,7 +29,21 @@ export const fetchMyProjects = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data;
+            
+            // Transform backend data to match home screen expectations
+            const transformedProjects = (data.data || []).map(project => ({
+                id: project.id,
+                title: project.name,
+                developer: `${project.city}, ${project.area}`,
+                description: project.description || '',
+                price: project.price_from && project.price_to 
+                    ? `₹${(project.price_from / 100000).toFixed(2)} L - ${(project.price_to / 10000000).toFixed(2)} Cr`
+                    : 'Price on request',
+                image: project.cover_image_url ? { uri: project.cover_image_url } : null,
+                type: 'SELL',
+            }));
+            
+            return transformedProjects;
         } catch (err) {
             return rejectWithValue(err.message);
         }

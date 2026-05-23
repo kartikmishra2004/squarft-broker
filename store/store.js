@@ -8,6 +8,7 @@ import documentSlice from './slices/documentSlice';
 import walletSlice from './slices/walletSlice';
 import brokerSlice from './slices/brokerSlice';
 import projectSlice from './slices/projectSlice';
+import propertySlice from './slices/propertySlice';
 
 export const store = configureStore({
     reducer: {
@@ -20,5 +21,6 @@ export const store = configureStore({
         wallet: walletSlice,
         broker: brokerSlice,
         project: projectSlice,
+        property: propertySlice,
     },
 });
