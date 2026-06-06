@@ -7,18 +7,45 @@ const authHeader = (token) => ({ Authorization: `Bearer ${token}` });
 // Step 1 — create project with basic details
 export const createBasicDetails = createAsyncThunk(
     'project/createBasicDetails',
-    async ({ category, property_type, property_subtype }, { getState, rejectWithValue }) => {
+    async ({ category, property_type, kind_of_property, listing_type }, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
+            
+           
+            const payload = {
+                category: category,                               // residential/commercial
+                property_type: property_type,                     // villa/apartment/shop/office/etc
+                property_subtype: kind_of_property || null,       // bhk value or ready/bare/coworking
+                listing_type: listing_type || 'buy',              // buy/rent (for future use)
+                city: 'TBD',                                      
+                area: 'TBD',                                     
+                pincode: 'TBD'                                  
+            };
+            
+            // COMPREHENSIVE LOGGING - DO NOT REMOVE
+            console.log('=== Frontend createBasicDetails DEBUG ===');
+            console.log('Input params:', { category, property_type, kind_of_property, listing_type });
+            console.log('Payload being sent:', JSON.stringify(payload));
+            console.log('=========================================');
+            
             const res = await fetch(`${API_BASE_URL}/api/v1/projects/basic-details`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...authHeader(token) },
-                body: JSON.stringify({ category, property_type, property_subtype }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
+            
+            console.log('=== Frontend Response ===');
+            console.log('Status:', res.status);
+            console.log('Response:', JSON.stringify(data));
+            console.log('========================');
+            
             if (!res.ok) return rejectWithValue(data.message);
             return data.data; // { id }
         } catch (err) {
+            console.error('=== Frontend Error ===');
+            console.error('Error:', err.message);
+            console.error('=====================');
             return rejectWithValue(err.message);
         }
     }

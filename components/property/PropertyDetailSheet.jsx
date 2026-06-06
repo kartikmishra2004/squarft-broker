@@ -99,7 +99,58 @@ export default function PropertyDetailSheet({
     "Garden"
   ];
 
-  const priceFormatted = `₹${item.price.toLocaleString("en-IN")}/m`;
+  // Handle different price formats from API
+  const getFormattedPrice = () => {
+    // Check if price exists and is a number
+    if (item.price && typeof item.price === 'number') {
+      return `₹${item.price.toLocaleString("en-IN")}/m`;
+    }
+    // Check for min_price and max_price (API format)
+    if (item.min_price && item.max_price) {
+      return `₹${(item.min_price / 100000).toFixed(2)}L - ₹${(item.max_price / 100000).toFixed(2)}L`;
+    }
+    // Check for price_from and price_to (API format)
+    if (item.price_from && item.price_to) {
+      return `₹${(item.price_from / 100000).toFixed(2)}L - ₹${(item.price_to / 100000).toFixed(2)}L`;
+    }
+    // Single price values
+    if (item.min_price) {
+      return `₹${(item.min_price / 100000).toFixed(2)}L`;
+    }
+    if (item.price_from) {
+      return `₹${(item.price_from / 100000).toFixed(2)}L`;
+    }
+    return 'Price on request';
+  };
+
+  const priceFormatted = getFormattedPrice();
+
+  // Get image source - handle both dummy data and API data
+  const getImageSource = () => {
+    // If item.image is already a require() object (dummy data)
+    if (item.image && typeof item.image === 'number') {
+      return item.image;
+    }
+    // If item has media array (API data)
+    if (item.media && item.media.length > 0) {
+      const coverImage = item.media.find(m => m.is_cover && m.media_type === 'image');
+      if (coverImage) return { uri: coverImage.url };
+      const firstImage = item.media.find(m => m.media_type === 'image');
+      if (firstImage) return { uri: firstImage.url };
+    }
+    // If item has cover_image_url (API data)
+    if (item.cover_image_url) {
+      return { uri: item.cover_image_url };
+    }
+    // Fallback to item.image if it's a URI string
+    if (item.image && typeof item.image === 'string') {
+      return { uri: item.image };
+    }
+    // Default fallback
+    return item.image || require("../../assets/images/home/hero.png");
+  };
+
+  const imageSource = getImageSource();
 
   return (
     <>
@@ -133,14 +184,14 @@ export default function PropertyDetailSheet({
               <View style={{ height: 145, overflow: "hidden" }}>
                 <View style={{ flex: 1, flexDirection: "row" }}>
                   <Image
-                    source={item.image}
+                    source={imageSource}
                     style={{ flex: 1.4, height: 145 }}
                     resizeMode="cover"
                   />
                   <View style={{ width: 2, backgroundColor: "#fff" }} />
                   <View style={{ flex: 1, height: 145, position: "relative" }}>
                     <Image
-                      source={item.image}
+                      source={imageSource}
                       style={{ width: "100%", height: "100%", opacity: 0.9 }}
                       resizeMode="cover"
                     />
@@ -210,7 +261,7 @@ export default function PropertyDetailSheet({
                 <View className="flex-row items-center justify-between mb-2">
                   <View>
                     <Text className="text-[12px] font-manrope-bold text-gray-500 uppercase">{item.category || "Apartment"}</Text>
-                    <Text className="text-[16px] font-manrope-extrabold text-[#0F172A]">{item.title}</Text>
+                    <Text className="text-[16px] font-manrope-extrabold text-[#0F172A]">{item.title || item.name || 'Property'}</Text>
                     <Text className="text-[15px] font-manrope-bold text-[#4A43EC] mt-0.5">{priceFormatted}</Text>
                   </View>
               
@@ -232,9 +283,9 @@ export default function PropertyDetailSheet({
               {/* Stats Grid */}
               <View className="flex-row flex-wrap mx-4 justify-between mb-3 mt-4">
                 {[
-                  { label: "AREA", value: `${item.areaSqft || item.area} sqft` },
-                  { label: "BEDS", value: `${item.beds} Units` },
-                  { label: "BATHS", value: `${item.baths} Units` },
+                  { label: "AREA", value: `${item.areaSqft || item.area || item.total_area || 'N/A'} sqft` },
+                  { label: "BEDS", value: `${item.beds || item.bedrooms || 'N/A'} Units` },
+                  { label: "BATHS", value: `${item.baths || item.bathrooms || 'N/A'} Units` },
                   { label: "VIEWS", value: item.views || "120+" },
                 ].map((stat) => (
                   <View

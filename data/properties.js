@@ -1,12 +1,13 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const commonCategories = [
-  { id: "house", name: "House", image: require("../assets/icons/property-types/house.png") },
-  { id: "plots", name: "Plots", image: require("../assets/icons/property-types/plots.png") },
-  { id: "lands", name: "Lands", image: require("../assets/icons/property-types/lands.png") },
-  { id: "warehouse", name: "Warehouse", image: require("../assets/icons/property-types/warehouse.png") },
-  { id: "flats", name: "Flats", image: require("../assets/icons/property-types/flats.png") },
-  { id: "store", name: "Store", image: require("../assets/icons/property-types/store.png") },
+  { id: "villa", name: "Villa", image: require("../assets/images/villa.png") },
+  { id: "plots", name: "Plots", image: require("../assets/images/plot.png") },
+  { id: "apartment", name: "Apartment", image: require("../assets/images/apartment.png") },
+  { id: "rowhouse", name: "Rowhouse", image: require("../assets/images/rowhouse.png") },
+  { id: "office", name: "Office", image: require("../assets/images/office.png") },
+  { id: "shop", name: "Shop", image: require("../assets/images/Shop.png") },
+    { id: "showroom", name: "Showroom", image: require("../assets/images/showroom.png") },
 ];
 
 

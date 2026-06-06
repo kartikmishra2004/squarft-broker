@@ -36,11 +36,9 @@ const KycModal = () => {
     }, [isKycCompleted, isLoggedIn, pathname]);
 
     const handleCompleteKyc = () => {
-        // For now, just mark KYC as completed and redirect to home
-        // This bypasses the actual KYC flow since APIs are malfunctioning
-        dispatch(setKycCompleted(true));
+        // Redirect to My Documents page to upload KYC documents
         bottomSheetModalRef.current?.dismiss();
-        router.replace('/(tabs)/home');
+        router.push('/(screens)/my-documents');
     };
 
     if (isKycCompleted || !isLoggedIn || pathname.includes('kyc') || pathname.includes('my-documents')) {

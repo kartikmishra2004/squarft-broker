@@ -67,7 +67,7 @@ export const sendOtpApi = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data; // returns { otp_token, expires_in }
+            return data; 
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -136,8 +136,7 @@ export const uploadKyc = createAsyncThunk(
                 formData.append('pan_card', toFile(panCard, 'pan_card'));
             }
             
-            // ALWAYS append text fields to avoid undefined in req.body
-            // Send empty string if not provided
+         
             const aadharNum = (aadharNumber && typeof aadharNumber === 'string') ? aadharNumber.trim() : '';
             const panNum = (panNumber && typeof panNumber === 'string') ? panNumber.trim() : '';
             
@@ -182,6 +181,47 @@ export const fetchKyc = createAsyncThunk(
     }
 );
 
+// Fetch user profile
+export const fetchUserProfile = createAsyncThunk(
+    'auth/fetchProfile',
+    async (_, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            const response = await fetch(`${API_BASE_URL}/api/v1/profile/me`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data.message);
+            return data.data;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
+// Change password
+export const changePassword = createAsyncThunk(
+    'auth/changePassword',
+    async ({ currentPassword, newPassword }, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            const response = await fetch(`${API_BASE_URL}/api/v1/profile/change-password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ currentPassword, newPassword }),
+            });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data.message);
+            return data.message;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
 const authSlice = createSlice({
     name: 'auth',
     initialState: {
@@ -194,7 +234,7 @@ const authSlice = createSlice({
         otp: ['', '', '', '', '', ''], // Changed to 6 digits as per backend swagger
         otpFlow: 'register',
         rememberMe: false,
-        isLoggedIn: false,
+        isLoggedIn:false,
         isKycCompleted: true,
         token: null,
         user: null,
@@ -283,7 +323,24 @@ const authSlice = createSlice({
             .addCase(uploadKyc.fulfilled, (state) => { state.loading = false; state.isKycCompleted = true; })
             .addCase(uploadKyc.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
             // Fetch KYC
-            .addCase(fetchKyc.fulfilled, (state, action) => { state.kyc = action.payload; });
+            .addCase(fetchKyc.fulfilled, (state, action) => { state.kyc = action.payload; })
+            // Fetch Profile
+            .addCase(fetchUserProfile.pending, (state) => { state.loading = true; })
+            .addCase(fetchUserProfile.fulfilled, (state, action) => {
+                state.loading = false;
+                state.user = action.payload.user;
+            })
+            .addCase(fetchUserProfile.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+            // Change Password
+            .addCase(changePassword.pending, (state) => { state.loading = true; })
+            .addCase(changePassword.fulfilled, (state) => { state.loading = false; })
+            .addCase(changePassword.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            });
     },
 });
 

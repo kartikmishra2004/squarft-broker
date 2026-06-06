@@ -459,10 +459,23 @@ export default function AddProject() {
                                         onPress={async () => {
                                             if (!step1Valid) return;
                                             try {
+                                                // Determine kind_of_property based on property type
+                                                let kindOfProperty = null;
+                                                
+                                                // For residential with BHK options
+                                                if (selectedMainType === "residential" && showBhk) {
+                                                    kindOfProperty = selectedBhk; // "1bhk", "2bhk", etc.
+                                                }
+                                                // For commercial office with kind options
+                                                else if (selectedMainType === "commercial" && showKind) {
+                                                    kindOfProperty = selectedKind; // "ready", "bare", "coworking"
+                                                }
+                                                
                                                 await dispatch(createBasicDetails({
-                                                    category: selectedMainType,
-                                                    property_type: selectedSubType,
-                                                    property_subtype: selectedBhk !== "1bhk" ? selectedBhk : undefined,
+                                                    category: selectedMainType,           // residential/commercial
+                                                    property_type: selectedSubType,       // villa/apartment/shop/office/etc
+                                                    kind_of_property: kindOfProperty,     // bhk or kind
+                                                    listing_type: 'buy'                   // Default to 'buy'
                                                 })).unwrap();
                                                 setCurrentStep(prev => prev + 1);
                                             } catch (_) {}

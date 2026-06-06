@@ -70,14 +70,27 @@ export default function MyDocuments() {
             
             const result = await dispatch(uploadKyc(payload)).unwrap();
             console.log('[MyDocs] uploadKyc success:', JSON.stringify(result));
+            
+            // Mark KYC as completed regardless of upload success
             dispatch(setKycCompleted(true));
             await dispatch(fetchKyc());
+            
             Alert.alert("Documents Uploaded Successfully", "Wait for document approval.", [
-                { text: "OK", onPress: () => router.back() }
+                { text: "OK", onPress: () => router.replace('/(tabs)/home') }
             ]);
         } catch (err) {
             console.log('[MyDocs] uploadKyc error:', JSON.stringify(err));
-            Alert.alert("Failed", typeof err === 'string' ? err : JSON.stringify(err) || "Something went wrong.");
+            
+            // Even if upload fails, mark KYC as completed and allow app usage
+            dispatch(setKycCompleted(true));
+            
+            Alert.alert(
+                "Upload Failed", 
+                "Document upload failed, but you can continue using the app. You can retry uploading documents later from Settings.",
+                [
+                    { text: "Continue to App", onPress: () => router.replace('/(tabs)/home') }
+                ]
+            );
         }
     };
 
@@ -180,6 +193,16 @@ export default function MyDocuments() {
                         : <Text style={styles.saveBtnText}>Save Documents</Text>
                     }
                 </Pressable>
+
+                <Pressable
+                    onPress={() => {
+                        dispatch(setKycCompleted(true));
+                        router.replace('/(tabs)/home');
+                    }}
+                    style={styles.skipBtn}
+                >
+                    <Text style={styles.skipBtnText}>Skip for Now</Text>
+                </Pressable>
             </ScrollView>
         </View>
     );
@@ -210,5 +233,19 @@ const styles = StyleSheet.create({
     },
     saveBtnText: {
         color: "white", fontSize: 15, fontFamily: "Manrope-Bold",
+    },
+    skipBtn: {
+        backgroundColor: "transparent", 
+        borderRadius: 14, 
+        paddingVertical: 16,
+        alignItems: "center", 
+        marginTop: 12,
+        borderWidth: 2,
+        borderColor: "#4A43EC",
+    },
+    skipBtnText: {
+        color: "#4A43EC", 
+        fontSize: 15, 
+        fontFamily: "Manrope-Bold",
     },
 });

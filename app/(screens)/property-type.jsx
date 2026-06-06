@@ -8,25 +8,32 @@ import {
   Image,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
-import { propertyTypes, propertiesByRoomType } from "../../data/listingData";
+import { propertyTypes } from "../../data/listingData";
 import { upcomingProjectsData } from "../../data/properties";
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import Slider from "@react-native-community/slider";
 import PropertyCard from "../../components/property/PropertyCard";
 import CategoryTile from "../../components/property/CategoryTile";
 import PropertyDetailSheet from "../../components/property/PropertyDetailSheet";
+import { fetchRecommendedProperties } from "../../store/slices/propertySlice";
 
 export default function PropertyType() {
   const { typeId } = useLocalSearchParams();
+  const dispatch = useDispatch();
   const [view, setView] = useState(typeId ? "list" : "types");
   const [selectedTypeId, setSelectedTypeId] = useState(typeId || null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("approved");
 
+  // Get properties from Redux
+  const properties = useSelector(state => state.property.recommendedProperties);
+  const loading = useSelector(state => state.property.loading);
+  
   // Use a safe selector in case notifications store isn't present in broker app
   const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
   const router = useRouter();
@@ -41,6 +48,16 @@ export default function PropertyType() {
   const snapPoints = useMemo(() => ["65%"], []);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [propertySheetVisible, setPropertySheetVisible] = useState(false);
+
+  // Fetch properties when selectedTypeId changes
+  useEffect(() => {
+    if (selectedTypeId && view === "list") {
+      dispatch(fetchRecommendedProperties({
+        type: selectedTypeId,
+        limit: 50
+      }));
+    }
+  }, [selectedTypeId, view, dispatch]);
 
   useEffect(() => {
     if (typeId) {
@@ -86,22 +103,23 @@ export default function PropertyType() {
     return selectedTypeId.replace(/(\d+)([a-z]+)/i, '$1 $2').charAt(0).toUpperCase() + selectedTypeId.slice(1).replace(/(\d+)([a-z]+)/i, '$1 $2');
   }, [selectedTypeId]);
 
-
-
-  const rawList = selectedTypeId ? (propertiesByRoomType[selectedTypeId] || []) : [];
-  const statusFiltered = rawList.filter(p => p.status?.toLowerCase() === statusFilter?.toLowerCase());
-
-  const finalFiltered = statusFiltered.filter(p => {
-    const matchSearch = searchQuery ? p.title.toLowerCase().includes(searchQuery.toLowerCase()) : true;
-    const matchPrice = priceRange ? p.price <= priceRange : true;
-    const matchFacility = facilityFilter ? p.facility === facilityFilter : true;
-    return matchSearch && matchPrice && matchFacility;
-  });
+  // Filter properties from API
+  const filteredProperties = useMemo(() => {
+    if (!properties || properties.length === 0) return [];
+    
+    return properties.filter(p => {
+      const matchSearch = searchQuery ? 
+        (p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) : true;
+      const matchPrice = priceRange ? (p.min_price || 0) <= priceRange : true;
+      // Note: facilityFilter not available in API response, can be added later
+      return matchSearch && matchPrice;
+    });
+  }, [properties, searchQuery, priceRange]);
 
   const currentProperties = {
-    filtered: finalFiltered,
-    total: rawList.length,
-    statusCount: statusFiltered.length
+    filtered: filteredProperties,
+    total: properties?.length || 0,
+    statusCount: filteredProperties.length
   };
 
   const renderBackdrop = useCallback(
@@ -163,25 +181,27 @@ export default function PropertyType() {
 
           <View className="flex-row items-center justify-between px-5 mt-8 mb-4">
             <Text className="text-sm text-black font-lato-bold">Listing Property ({currentProperties.filtered.length})</Text>
-            <View className="flex-row gap-2">
-              {['approved', 'pending', 'rejected'].map(status => (
-                <Pressable
-                  key={status}
-                  onPress={() => setStatusFilter(status)}
-                  className={`px-3 py-1.5 rounded-full border ${statusFilter === status ? 'bg-[#4A43EC] border-[#4A43EC]' : 'bg-white border-[#4A43EC]'}`}
-                ><Text className={`text-[10px] font-lato-medium capitalize ${statusFilter === status ? 'text-white' : 'text-[#4A43EC]'}`}>{status}</Text></Pressable>
-              ))}
-            </View>
           </View>
 
-          <View className="flex-row flex-wrap px-2.5 justify-between">{currentProperties.filtered.map((item) => (
-            <PropertyCard key={item.id} item={item} propertyTypeLabel={currentTypeLabel} onPress={handlePropertyPress} />
-          ))}{currentProperties.filtered.length === 0 && (
-            <View className="w-full items-center mt-20 px-8">
-              <Text className="text-gray-400 font-lato-medium text-center text-xs">No {statusFilter} properties match your filters</Text>
+          {loading ? (
+            <View className="items-center justify-center py-20">
+              <ActivityIndicator size="large" color="#4A43EC" />
+              <Text className="text-gray-500 mt-4 font-lato-regular">Loading properties...</Text>
+            </View>
+          ) : (
+            <View className="flex-row flex-wrap px-2.5 justify-between">
+              {currentProperties.filtered.map((item) => (
+                <PropertyCard key={item.id} item={item} propertyTypeLabel={currentTypeLabel} onPress={handlePropertyPress} />
+              ))}
+              {currentProperties.filtered.length === 0 && (
+                <View className="w-full items-center mt-20 px-8">
+                  <Text className="text-gray-400 font-lato-medium text-center text-xs">
+                    No properties found for {currentTypeLabel}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
-          </View>
         </ScrollView>
 
         <BottomSheet
@@ -315,43 +335,6 @@ export default function PropertyType() {
         ))}</View>
 
         <View className="px-5 mb-4">
-          <Text className="text-[15px] text-black font-lato-bold tracking-wider">RECENT ADDED</Text>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-1" contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}>{(propertiesByRoomType["1bhk"] || []).slice(0, 3).map((item) => (
-
-
-          <Pressable
-            key={item.id}
-            onPress={() => handlePropertyPress(item)}
-            className="w-[220px] bg-white rounded-[16px] mr-4 border border-gray-200 overflow-hidden shadow-sm mb-4"
-          >
-
-            <Image source={item.image} className="w-full h-44" />
-            <View className="p-4">
-              <View className="flex-row justify-between items-center mb-2">
-                <View className="px-2 py-0.5 rounded-xl border border-[#E0E7FF]">
-                  <Text className="text-[10px] text-[#4A43EC] font-lato-medium">{item.category}</Text>
-                </View>
-                <Text className="text-[15px] text-[#4A43EC] font-lato-bold">
-                  ₹{item.price}<Text className="text-[11px]">/m</Text>
-                </Text>
-              </View>
-              <Text className="text-[15px] text-[#1F2937] font-manrope-extrabold mb-2" numberOfLines={1}>
-                {item.title}
-              </Text>
-              <View className="flex-row items-center gap-1">
-                <Ionicons name="location" size={13} color="#FF7B54" />
-                <Text className="text-[12px] text-[#6B7280] font-lato-medium" numberOfLines={1}>
-                  {item.location}
-                </Text>
-              </View>
-            </View>
-          </Pressable>
-        ))}
-        </ScrollView>
-
-        <View className="px-5 mb-4 mt-4">
           <Text className="text-[15px] text-black font-lato-bold tracking-wider">UPCOMING PROJECTS</Text>
         </View>
 

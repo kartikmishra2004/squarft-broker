@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import { useSelector, useDispatch } from "react-redux";
 import { categoriesData, upcomingProjectsData } from "../../data/properties";
 import { fetchBrokerStats, fetchMyProjects } from "../../store/slices/brokerSlice";
+import { fetchUserProfile } from "../../store/slices/authSlice";
 
 const { width } = Dimensions.get("window");
 
@@ -27,10 +28,12 @@ export default function Home() {
   const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
   const brokerStats = useSelector(state => state.broker?.stats);
   const apiProjects = useSelector(state => state.broker?.projects || []);
+  const user = useSelector(state => state.auth?.user);
 
   useEffect(() => {
     dispatch(fetchBrokerStats());
     dispatch(fetchMyProjects());
+    dispatch(fetchUserProfile());
   }, []);
 
   const stats = [
@@ -58,6 +61,18 @@ export default function Home() {
     }
   };
 
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "Recently joined";
+    const date = new Date(dateString);
+    const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const displayName = user?.full_name || user?.first_name || "User";
+  const displayDate = user?.created_at ? formatDate(user.created_at) : "Recently joined";
+  const avatarUrl = user?.avatar_url;
+
   return (
     <View className="flex-1 bg-white">
       <StatusBar
@@ -72,14 +87,22 @@ export default function Home() {
         >
           <View className="flex-row justify-between items-center">
             <View className="flex-row items-center gap-3">
-              <Image
-                src="https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                className="w-14 h-14 rounded-full border border-white"
-              />
+              {avatarUrl ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  className="w-14 h-14 rounded-full border border-white"
+                />
+              ) : (
+                <View className="w-14 h-14 rounded-full border border-white bg-[#5B54ED] items-center justify-center">
+                  <Text className="text-white text-[20px] font-lato-bold">
+                    {displayName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
               <View>
                 <View className="flex-row items-center gap-1">
                   <Text className="text-white text-lg font-lato-bold">
-                    Manas Gangrade
+                    {displayName}
                   </Text>
                   <MaterialCommunityIcons
                     name="check-circle"
@@ -87,7 +110,7 @@ export default function Home() {
                     color="#3AFF08"
                   />
                 </View>
-                <Text className="text-xs text-white/70 mt-0.5">Mon, Feb 20, 2025</Text>
+                <Text className="text-xs text-white/70 mt-0.5">{displayDate}</Text>
               </View>
             </View>
             <View className="flex-row items-center gap-3">
@@ -184,11 +207,10 @@ export default function Home() {
                 className="bg-[#F4F7FF] rounded-[18px] items-center justify-center"
               >
 
-
                 <View className="justify-center items-center mb-3">
                   <Image 
                     source={cat.image} 
-                    style={{ width: 28, height: 28 }} 
+                    style={{ width: 200, height: 60 }} 
                     resizeMode="contain" 
                   />
                 </View>
