@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     View, Text, Pressable, StatusBar, Platform,
     ScrollView, Image, StyleSheet, Alert, ActivityIndicator,
@@ -28,6 +28,12 @@ export default function MyDocuments() {
         panCard:     null,
         selfie:      null,
     });
+
+    // 🔥 Fetch existing KYC documents when component mounts
+    useEffect(() => {
+        console.log('[MyDocs] Fetching existing KYC documents...');
+        dispatch(fetchKyc());
+    }, [dispatch]);
 
     const pickImage = async (key, isCamera) => {
         let result;
@@ -194,7 +200,7 @@ export default function MyDocuments() {
                     }
                 </Pressable>
 
-                <Pressable
+                {/* <Pressable
                     onPress={() => {
                         dispatch(setKycCompleted(true));
                         router.replace('/(tabs)/home');
@@ -202,7 +208,7 @@ export default function MyDocuments() {
                     style={styles.skipBtn}
                 >
                     <Text style={styles.skipBtnText}>Skip for Now</Text>
-                </Pressable>
+                </Pressable> */}
             </ScrollView>
         </View>
     );
