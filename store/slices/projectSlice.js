@@ -4,31 +4,30 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.31.
 
 const authHeader = (token) => ({ Authorization: `Bearer ${token}` });
 
-// Step 1 — create project with basic details
+// Step 1 — create property with basic details (FIXED TO MATCH BACKEND)
 export const createBasicDetails = createAsyncThunk(
     'project/createBasicDetails',
     async ({ category, property_type, kind_of_property, listing_type }, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
             
-           
+            // BACKEND ACTUALLY EXPECTS: { property_type, property_subtype, listing_type, kind_of_property }
+            // Backend uses these field names in the controller (line 837-879 of propertyController.js)
             const payload = {
-                category: category,                               // residential/commercial
-                property_type: property_type,                     // villa/apartment/shop/office/etc
-                property_subtype: kind_of_property || null,       // bhk value or ready/bare/coworking
-                listing_type: listing_type || 'buy',              // buy/rent (for future use)
-                city: 'TBD',                                      
-                area: 'TBD',                                     
-                pincode: 'TBD'                                  
+                property_type: category,                           // residential/commercial
+                property_subtype: property_type,                   // shop/showroom/office/plot/villa/apartment/rowhouse
+                listing_type: listing_type || 'buy',               // buy/rent
+                kind_of_property: kind_of_property                 // 1_bhk/2_bhk/ready/bare/coworking
             };
             
             // COMPREHENSIVE LOGGING - DO NOT REMOVE
             console.log('=== Frontend createBasicDetails DEBUG ===');
             console.log('Input params:', { category, property_type, kind_of_property, listing_type });
-            console.log('Payload being sent:', JSON.stringify(payload));
+            console.log('Mapped payload being sent:', JSON.stringify(payload));
+            console.log('API Endpoint: POST /api/v1/broker/properties/basic-details');
             console.log('=========================================');
             
-            const res = await fetch(`${API_BASE_URL}/api/v1/projects/basic-details`, {
+            const res = await fetch(`${API_BASE_URL}/api/v1/broker/properties/basic-details`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...authHeader(token) },
                 body: JSON.stringify(payload),
@@ -41,7 +40,12 @@ export const createBasicDetails = createAsyncThunk(
             console.log('========================');
             
             if (!res.ok) return rejectWithValue(data.message);
-            return data.data; // { id }
+            return { 
+                id: data.data.id,
+                // Store these for later use in Step 2/3
+                property_type,
+                kind_of_property
+            };
         } catch (err) {
             console.error('=== Frontend Error ===');
             console.error('Error:', err.message);
@@ -51,67 +55,173 @@ export const createBasicDetails = createAsyncThunk(
     }
 );
 
-// Step 2 — owner details
+// Step 2 — owner details (UPDATED: now includes contact_no and contact_email)
 export const updateOwnerDetails = createAsyncThunk(
     'project/updateOwnerDetails',
-    async ({ projectId, owner_name, owner_contact, owner_email, owner_address }, { getState, rejectWithValue }) => {
+    async ({ projectId, title, owner_name, owner_contact, owner_email, owner_address }, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
-            const res = await fetch(`${API_BASE_URL}/api/v1/projects/${projectId}/owner-details`, {
+            const listingTitle = (title || owner_name || '').trim();
+            
+            // BACKEND NOW ACCEPTS: { title, description, contact_no, contact_email }
+            const payload = {
+                title: listingTitle || 'Property Listing',
+                description: owner_address || '',
+                contact_no: owner_contact || null,
+                contact_email: owner_email || null
+            };
+            
+            console.log('=== updateOwnerDetails DEBUG ===');
+            console.log('Input:', { projectId, owner_name, owner_contact, owner_email, owner_address });
+            console.log('Mapped payload:', JSON.stringify(payload));
+            console.log('API: PUT /api/v1/broker/properties/:propertyId/owner-details');
+            console.log('================================');
+            
+            const res = await fetch(`${API_BASE_URL}/api/v1/broker/properties/${projectId}/owner-details`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', ...authHeader(token) },
-                body: JSON.stringify({ owner_name, owner_contact, owner_email, owner_address }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
+            
+            console.log('Response:', res.status, JSON.stringify(data));
+            
             if (!res.ok) return rejectWithValue(data.message);
             return data;
         } catch (err) {
+            console.error('updateOwnerDetails Error:', err.message);
             return rejectWithValue(err.message);
         }
     }
 );
 
-// Step 3a — property details
+// Step 3 — property details (UPDATED: now includes all new fields)
 export const updatePropertyDetails = createAsyncThunk(
     'project/updatePropertyDetails',
-    async ({ projectId, name, tower_number, flat_number, location, city, state, pincode, nearby_project, khasra_number, property_age }, { getState, rejectWithValue }) => {
+    async ({ projectId, name, tower_number, flat_number, location, city, area, state, pincode, nearby_project, khasra_number, property_age, owner_contact, owner_email, contact_no, contact_email }, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
-            const res = await fetch(`${API_BASE_URL}/api/v1/projects/${projectId}/property-details`, {
+            const resolvedContactNo = owner_contact || contact_no || null;
+            const resolvedContactEmail = owner_email || contact_email || null;
+            
+            // BACKEND NOW ACCEPTS: {
+            //   bedrooms, bathrooms, floors, latitude, longitude, rera_id,
+            //   city, total_area, pincode, contact_no, contact_email,
+            //   tower_no, flat_no, state, khasra_no, property_age
+            // }
+            const payload = {
+                bedrooms: null,                                    // Will be set based on BHK in future
+                bathrooms: null,                                   // Not collected yet
+                floors: null,                                      // Not collected yet
+                latitude: null,                                    // Not collected yet
+                longitude: null,                                   // Not collected yet
+                rera_id: null,                                     // Not collected yet
+                city: city || null,                                // ✅ From Step 3 form
+                total_area: area || null,                          // ✅ Maps to 'area' column (locality name)
+                pincode: pincode || null,                          // ✅ From Step 3 form
+                contact_no: resolvedContactNo,
+                contact_email: resolvedContactEmail,
+                tower_no: tower_number || null,                    // ✅ NOW SUPPORTED
+                flat_no: flat_number || null,                      // ✅ NOW SUPPORTED
+                state: state || null,                              // ✅ NOW SUPPORTED
+                khasra_no: khasra_number || null,                  // ✅ NOW SUPPORTED
+                property_age: property_age ? Number(property_age) : null  // ✅ NOW SUPPORTED
+            };
+            
+            console.log('=== updatePropertyDetails DEBUG ===');
+            console.log('Input:', { projectId, name, tower_number, flat_number, location, city, area, state, pincode, khasra_number, property_age });
+            console.log('Mapped payload:', JSON.stringify(payload));
+            console.log('API: PUT /api/v1/broker/properties/:propertyId/property-details');
+            console.log('===================================');
+            
+            const res = await fetch(`${API_BASE_URL}/api/v1/broker/properties/${projectId}/property-details`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', ...authHeader(token) },
-                body: JSON.stringify({ name, tower_number, flat_number, location, city, state, pincode, nearby_project, khasra_number, property_age }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
+            
+            console.log('Response:', res.status, JSON.stringify(data));
+            
             if (!res.ok) return rejectWithValue(data.message);
             return data;
         } catch (err) {
+            console.error('updatePropertyDetails Error:', err.message);
             return rejectWithValue(err.message);
         }
     }
 );
 
-// Step 3b — area details
+// Step 4 — area details (NEW API: total_area_sqft)
 export const updateAreaDetails = createAsyncThunk(
     'project/updateAreaDetails',
     async ({ projectId, total_area, carpet_area, area_unit }, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
-            const res = await fetch(`${API_BASE_URL}/api/v1/projects/${projectId}/area-details`, {
+            
+            // NEW API EXPECTS: { total_area_sqft }
+            const payload = {
+                total_area_sqft: total_area ? Number(total_area) : null
+            };
+            
+            console.log('=== updateAreaDetails DEBUG ===');
+            console.log('Input:', { projectId, total_area, carpet_area, area_unit });
+            console.log('Mapped payload:', JSON.stringify(payload));
+            console.log('API: PUT /api/v1/broker/properties/:propertyId/area-details');
+            console.log('===============================');
+            
+            const res = await fetch(`${API_BASE_URL}/api/v1/broker/properties/${projectId}/area-details`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', ...authHeader(token) },
-                body: JSON.stringify({ total_area, carpet_area, area_unit }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
+            
+            console.log('Response:', res.status, JSON.stringify(data));
+            
             if (!res.ok) return rejectWithValue(data.message);
             return data;
         } catch (err) {
+            console.error('updateAreaDetails Error:', err.message);
             return rejectWithValue(err.message);
         }
     }
 );
 
-// Step 4 — upload images & documents
+// Step 4b — pricing details
+export const updatePricingDetails = createAsyncThunk(
+    'project/updatePricingDetails',
+    async ({ projectId, selling_price, is_negotiable, tax_included, payment_mode }, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            
+            const payload = { selling_price, is_negotiable, tax_included, payment_mode };
+            
+            console.log('=== updatePricingDetails DEBUG ===');
+            console.log('Property ID:', projectId);
+            console.log('Payload:', JSON.stringify(payload));
+            console.log('API: PUT /api/v1/broker/properties/:propertyId/pricing-details');
+            console.log('==================================');
+            
+            const res = await fetch(`${API_BASE_URL}/api/v1/broker/properties/${projectId}/pricing-details`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...authHeader(token) },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            
+            console.log('Response:', res.status, JSON.stringify(data));
+            
+            if (!res.ok) return rejectWithValue(data.message);
+            return data;
+        } catch (err) {
+            console.error('updatePricingDetails Error:', err.message);
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
+// Step 5 — upload images & documents (FIXED TO NEW ENDPOINT)
 export const uploadProjectMedia = createAsyncThunk(
     'project/uploadMedia',
     async ({ projectId, images, documents }, { getState, rejectWithValue }) => {
@@ -123,17 +233,33 @@ export const uploadProjectMedia = createAsyncThunk(
                 name: asset.fileName || `${name}.jpg`,
                 type: asset.mimeType || 'image/jpeg',
             });
+            
+            console.log('=== uploadProjectMedia DEBUG ===');
+            console.log('Property ID:', projectId);
+            console.log('Images count:', images.length);
+            console.log('Documents count:', documents.length);
+            
             images.forEach((img, i) => formData.append('images', toFile(img, `image_${i}`)));
             documents.forEach((doc, i) => formData.append('documents', toFile(doc, `doc_${i}`)));
-            const res = await fetch(`${API_BASE_URL}/api/v1/project/${projectId}/add-images`, {
+            
+            // ✅ FIXED: Changed from /api/v1/project/:projectId/add-images to new endpoint
+            const endpoint = `${API_BASE_URL}/api/v1/broker/properties/${projectId}/add-media`;
+            console.log('API Endpoint:', endpoint);
+            console.log('================================');
+            
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData,
             });
             const data = await res.json();
+            
+            console.log('Response:', res.status, JSON.stringify(data));
+            
             if (!res.ok) return rejectWithValue(data.message);
             return data;
         } catch (err) {
+            console.error('uploadProjectMedia Error:', err.message);
             return rejectWithValue(err.message);
         }
     }
@@ -179,6 +305,10 @@ const projectSlice = createSlice({
             .addCase(updateAreaDetails.pending, pending)
             .addCase(updateAreaDetails.fulfilled, (state) => { state.loading = false; })
             .addCase(updateAreaDetails.rejected, rejected)
+
+            .addCase(updatePricingDetails.pending, pending)
+            .addCase(updatePricingDetails.fulfilled, (state) => { state.loading = false; })
+            .addCase(updatePricingDetails.rejected, rejected)
 
             .addCase(uploadProjectMedia.pending, pending)
             .addCase(uploadProjectMedia.fulfilled, (state) => {

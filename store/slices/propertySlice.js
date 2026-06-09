@@ -161,6 +161,47 @@ export const fetchContactedProperties = createAsyncThunk(
     }
 );
 
+// Fetch broker shortlisted properties (filtered by category and property type)
+export const fetchShortlistedProperties = createAsyncThunk(
+    'property/fetchShortlisted', 
+    async ({ category, property_type }, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            
+            console.log('🔍 [propertySlice] Fetching shortlisted properties:', { category, property_type });
+            
+            if (!category || !property_type) {
+                return rejectWithValue('Category and property_type are required');
+            }
+            
+            const queryParams = new URLSearchParams({
+                category,
+                property_type
+            });
+            
+            const endpoint = `${API_BASE_URL}/api/v1/broker/properties/shortlist?${queryParams.toString()}`;
+            console.log('🔍 [propertySlice] API Endpoint:', endpoint);
+            
+            const response = await fetch(endpoint, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await response.json();
+            
+            console.log('🔍 [propertySlice] Response:', {
+                status: response.ok,
+                count: data.data?.length || 0,
+                data: data
+            });
+            
+            if (!response.ok) return rejectWithValue(data.message);
+            return data.data;
+        } catch (err) {
+            console.error('🔍 [propertySlice] Error:', err);
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
 const propertySlice = createSlice({
     name: 'property',
     initialState: {
@@ -169,9 +210,11 @@ const propertySlice = createSlice({
         similarProperties: [],
         properties: [],
         recommendedProperties: [],
+        shortlistedProperties: [], // NEW: For homepage property type shortlisting
         savedItems: [],
         contactedProperties: [],
         loading: false,
+        shortlistedLoading: false, // NEW: Separate loading state for shortlisted
         error: null,
     },
     reducers: {
@@ -183,6 +226,7 @@ const propertySlice = createSlice({
         clearProperties: (state) => {
             state.properties = [];
             state.recommendedProperties = [];
+            state.shortlistedProperties = [];
         },
     },
     extraReducers: (builder) => {
@@ -271,6 +315,19 @@ const propertySlice = createSlice({
             })
             .addCase(fetchContactedProperties.rejected, (state, action) => {
                 state.loading = false;
+                state.error = action.payload;
+            })
+            // Fetch shortlisted properties (homepage property type filtering)
+            .addCase(fetchShortlistedProperties.pending, (state) => {
+                state.shortlistedLoading = true;
+                state.error = null;
+            })
+            .addCase(fetchShortlistedProperties.fulfilled, (state, action) => {
+                state.shortlistedLoading = false;
+                state.shortlistedProperties = action.payload;
+            })
+            .addCase(fetchShortlistedProperties.rejected, (state, action) => {
+                state.shortlistedLoading = false;
                 state.error = action.payload;
             });
     },

@@ -1,4 +1,4 @@
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { Platform, View } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -67,6 +67,7 @@ function TabIcon({ name, focused, size }) {
 }
 
 export default function TabsLayout() {
+    const router = useRouter();
     const insets = useSafeAreaInsets();
     const androidBottomInset = Platform.OS === "android" ? Math.max(insets.bottom, 0) : 0;
     const iosBottomPadding = Platform.OS === "ios" ? Math.max(insets.bottom - 8, 6) : 8;
@@ -131,6 +132,12 @@ export default function TabsLayout() {
                                 }}
                             />
                         ),
+                        listeners: () => ({
+                            tabPress: (e) => {
+                                e.preventDefault();
+                                router.replace("/(tabs)/addProject");
+                            },
+                        }),
                     }}
                 />
                 <Tabs.Screen

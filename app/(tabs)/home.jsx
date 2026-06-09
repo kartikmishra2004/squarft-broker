@@ -5,7 +5,6 @@ import {
   Pressable,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
   View,
   Dimensions,
@@ -13,22 +12,54 @@ import {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSelector, useDispatch } from "react-redux";
-import { categoriesData, upcomingProjectsData } from "../../data/properties";
+import { upcomingProjectsData } from "../../data/properties";
 import { fetchBrokerStats, fetchMyProjects } from "../../store/slices/brokerSlice";
 import { fetchUserProfile } from "../../store/slices/authSlice";
+import { fetchShortlistedProperties } from "../../store/slices/propertySlice";
 
 const { width } = Dimensions.get("window");
 
 const mainTabs = ["SELL"];
-const buyFilter = "BUY";
+const buyFilter = "Customer Requirement";
+
+// Property type categories - matching FilterModal structure
+const propertyCategories = [
+  {
+    id: "residential",
+    label: "Residential",
+    image: require("../../assets/icons/property-types/House2.png"),
+    cloudImage: require("../../assets/icons/property-types/Clouds.png"),
+    subTypes: [
+      { id: "plot", label: "Plot", image: require("../../assets/icons/property-types/plot.png") },
+      { id: "villa", label: "Villa", image: require("../../assets/icons/property-types/villa.png") },
+      { id: "apartment", label: "Apartment", image: require("../../assets/icons/property-types/apartment.png") },
+      { id: "rowhouse", label: "Rowhouse", image: require("../../assets/icons/property-types/rowhouse.png") },
+    ]
+  },
+  {
+    id: "commercial",
+    label: "Commercial",
+    image: require("../../assets/icons/property-types/commercial.png"),
+    subTypes: [
+      { id: "shop", label: "Shop", image: require("../../assets/icons/property-types/Shop.png") },
+      { id: "showroom", label: "Showroom", image: require("../../assets/icons/property-types/showroom.png") },
+      { id: "office", label: "Office", image: require("../../assets/icons/property-types/office.png") },
+    ]
+  }
+];
 
 export default function Home() {
   const [activeFilter, setActiveFilter] = useState("SELL");
+  const [selectedCategory, setSelectedCategory] = useState(null); // null, "residential", or "commercial"
+  const [selectedPropertyType, setSelectedPropertyType] = useState(null); // Single selection
+  
   const dispatch = useDispatch();
   const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
   const brokerStats = useSelector(state => state.broker?.stats);
   const apiProjects = useSelector(state => state.broker?.projects || []);
   const user = useSelector(state => state.auth?.user);
+  const shortlistedProperties = useSelector(state => state.property?.shortlistedProperties || []);
+  const shortlistedLoading = useSelector(state => state.property?.shortlistedLoading || false);
 
   useEffect(() => {
     dispatch(fetchBrokerStats());
@@ -43,22 +74,64 @@ export default function Home() {
     { label: "Rejected",         count: brokerStats?.rejected         ?? 0 },
   ];
 
-  const categories = useMemo(() => {
-    return categoriesData[activeFilter] || [];
-  }, [activeFilter]);
-
-
   const projects = useMemo(() => {
     if (apiProjects.length > 0) return apiProjects;
     return upcomingProjectsData;
   }, [apiProjects]);
+  
+  // Get subtypes based on selected category
+  const currentSubTypes = useMemo(() => {
+    if (!selectedCategory) return [];
+    const category = propertyCategories.find(c => c.id === selectedCategory);
+    return category?.subTypes || [];
+  }, [selectedCategory]);
+  
+  // Count shortlisted properties for the selected property type
+  const shortlistedCount = useMemo(() => {
+    return shortlistedProperties.length;
+  }, [shortlistedProperties]);
 
   const handleFilterPress = (filter) => {
-    if (filter === "BUY") {
+    if (filter === "Customer Requirement") {
       router.push("/customer-requirement");
     } else {
       setActiveFilter(filter);
     }
+  };
+  
+  // Handle category selection (Residential/Commercial)
+  const handleCategoryPress = (categoryId) => {
+    if (selectedCategory === categoryId) {
+      // Deselect if clicking the same category
+      setSelectedCategory(null);
+      setSelectedPropertyType(null);
+    } else {
+      // Select new category and reset property type
+      setSelectedCategory(categoryId);
+      setSelectedPropertyType(null);
+    }
+  };
+  
+  // Handle property type selection (single selection only)
+  const handlePropertyTypePress = (typeId) => {
+    setSelectedPropertyType(typeId);
+    
+    // Fetch shortlisted properties for this category and type
+    if (selectedCategory && typeId) {
+      console.log('🔍 [Home] Fetching shortlisted properties:', {
+        category: selectedCategory,
+        property_type: typeId
+      });
+      
+      dispatch(fetchShortlistedProperties({
+        category: selectedCategory,
+        property_type: typeId
+      }));
+    }
+    
+    // Navigate to property-type screen with the selected type
+    router.push({ pathname: "/property-type", params: { typeId,
+        category: selectedCategory } });
   };
 
   // Format date for display
@@ -181,95 +254,119 @@ export default function Home() {
         </View>
 
         <View className="px-[10px] pt-[15px]">
-          {/* Hero Banner */}
-
-          <Pressable className="w-full h-[170px] rounded-[20px] overflow-hidden mb-6">
-            <Image
-              source={require("../../assets/images/home/hero.png")}
-              className="w-full h-full"
-              resizeMode="stretch"
-            />
-          </Pressable>
-
-          {/* Categories Grid */}
-          <View className="flex-row flex-wrap justify-between mb-[30px] px-2">
-            {categories.map((cat, index) => (
-              <Pressable
-                key={index}
-                style={{ width: (width - 80) / 3, height: (width - 80) / 3, marginBottom: 15 }}
-                onPress={() => {
-                  if (cat.id === "house" || cat.id === "flats") {
-                    router.push("/property-type");
-                  } else {
-                    router.push({ pathname: "/property-type", params: { typeId: cat.id } });
-                  }
-                }}
-                className="bg-[#F4F7FF] rounded-[18px] items-center justify-center"
-              >
-
-                <View className="justify-center items-center mb-3">
-                  <Image 
-                    source={cat.image} 
-                    style={{ width: 200, height: 60 }} 
-                    resizeMode="contain" 
-                  />
-                </View>
-                <Text className="text-[12px] text-gray-700 font-lato-bold tracking-[0.5px] uppercase">
-                  {cat.name}
-                </Text>
-              </Pressable>
-            ))}
+            {/* Promotional Image - Replace "23 Channel Partner" section */}
+          <View className="mb-6 px-2">
+            <Pressable className="w-full h-[100px] rounded-[20px] overflow-hidden">
+              <Image
+                source={require("../../assets/images/avgearning.png")}
+                className="w-full h-full"
+                resizeMode="cover"
+              />
+            </Pressable>
           </View>
 
-          {/* Upcoming Projects Header */}
-          <View className="mb-4">
-            <Text className="text-base text-black font-lato-bold tracking-[0.5px]">
-              OUR UPCOMING PROJECT
-            </Text>
-          </View>
+          {/* Property Type Selection - New Design */}
+          <View className="mb-6">
+            {/* Section Header */}
+            <View className="px-2 mb-4">
+              <Text className="text-[15px] text-black font-lato-bold tracking-wider">
+                PROPERTY TYPES
+              </Text>
+            </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingRight: 20 }}
-          >
-            {projects.map((project, index) => (
-              <View
-                key={project.id || index}
-                className="w-[290px] flex-row bg-[#F4F7FF] rounded-lg overflow-hidden mr-[15px] h-[110px]"
-              >
-                {project.image ? (
-                  <Image source={project.image} className="w-[35%] h-full" resizeMode="cover" />
-                ) : (
-                  <View className="w-[35%] h-full bg-[#D8DBEF] items-center justify-center">
-                    <Ionicons name="business-outline" size={28} color="#4A43EC" />
+            {/* Category Selection (Residential/Commercial) */}
+            <View className="flex-row gap-3 px-2 mb-4">
+              {propertyCategories.map((category) => (
+                <Pressable
+                  key={category.id}
+                  onPress={() => handleCategoryPress(category.id)}
+                  style={{ flex: 1 }}
+                  className={`border-2 rounded-xl p-4 items-center ${
+                    selectedCategory === category.id 
+                      ? 'bg-[#F5F3FF] border-[#7C3AED]' 
+                      : 'bg-white border-[#E5E7EB]'
+                  }`}
+                >
+                  <View className="relative w-[60px] h-[60px] mb-2 items-center justify-center">
+                    <Image
+                      source={category.image}
+                      style={{ width: 60, height: 60 }}
+                      resizeMode="contain"
+                    />
+                    {category.cloudImage && (
+                      <Image
+                        source={category.cloudImage}
+                        style={{ position: 'absolute', top: -8, right: -8, width: 30, height: 30 }}
+                        resizeMode="contain"
+                      />
+                    )}
                   </View>
-                )}
-                <View className="flex-1 p-2.5 justify-center border-2 border-[#4A43EC] border-l-0 rounded-r-lg">
-                  <Text className="text-sm text-black font-lato-bold mb-0.5" numberOfLines={1}>
-                    {project.title || project.name || 'Unnamed Project'}
+                  <Text 
+                    className={`text-[14px] font-lato-bold ${
+                      selectedCategory === category.id ? 'text-[#7C3AED]' : 'text-[#6B7280]'
+                    }`}
+                  >
+                    {category.label}
                   </Text>
-                  <Text className="text-[10px] text-gray-400 font-lato-regular mb-1">
-                    {project.developer || project.location || ''}
-                  </Text>
-                  <Text className="text-[9px] text-gray-500 font-lato-regular mb-2 leading-3">
-                    {project.description || ''}
-                  </Text>
-                  <Text className="text-sm text-black font-lato-bold">
-                    {project.price || ''}
-                  </Text>
-                </View>
-              </View>
-            ))}
-            {projects.length === 0 && (
-              <View
-                style={{ width: width - 40 }}
-                className="h-[110px] justify-center items-center bg-[#F9FAFB] rounded-lg border border-dashed border-gray-300"
-              >
-                <Text className="text-gray-400 font-lato-regular">No projects found for this category</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Property Sub-Types Grid (shows when category is selected) */}
+            {selectedCategory && currentSubTypes.length > 0 && (
+              <View className="flex-row flex-wrap justify-between px-2 mt-2">
+                {currentSubTypes.map((subType) => (
+                  <Pressable
+                    key={subType.id}
+                    onPress={() => handlePropertyTypePress(subType.id)}
+                    style={{ 
+                      width: (width - 52) / 2,
+                      marginBottom: 12
+                    }}
+                    className={`border-2 rounded-xl p-4 items-center ${
+                      selectedPropertyType === subType.id
+                        ? 'bg-[#F5F3FF] border-[#7C3AED]'
+                        : 'bg-white border-[#E5E7EB]'
+                    }`}
+                  >
+                    <Image
+                      source={subType.image}
+                      style={{ width: 50, height: 50, marginBottom: 8 }}
+                      resizeMode="contain"
+                    />
+                    <Text 
+                      className={`text-[14px] font-lato-bold ${
+                        selectedPropertyType === subType.id ? 'text-[#7C3AED]' : 'text-[#6B7280]'
+                      }`}
+                    >
+                      {subType.label}
+                    </Text>
+                    
+                    {/* Show count for selected property type */}
+                    {selectedPropertyType === subType.id && shortlistedCount > 0 && (
+                      <View className="mt-2 bg-[#7C3AED] px-2 py-1 rounded-full">
+                        <Text className="text-white text-[10px] font-lato-bold">
+                          {shortlistedCount} {shortlistedCount === 1 ? 'property' : 'properties'}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {/* Show loading indicator */}
+                    {selectedPropertyType === subType.id && shortlistedLoading && (
+                      <View className="mt-2">
+                        <Text className="text-[#7C3AED] text-[10px] font-lato-regular">
+                          Loading...
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                ))}
               </View>
             )}
-          </ScrollView>
+          </View>
+
+       
+   
         </View>
       </ScrollView>
     </View>

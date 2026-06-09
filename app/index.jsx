@@ -6,6 +6,5 @@ export default function Index() {
     if (isLoggedIn) {
         return <Redirect href="/(tabs)/home" />;
     }
-
     return <Redirect href="/splash" />;
 }

@@ -1,12 +1,54 @@
-import { View, Text, FlatList, TextInput, TouchableOpacity, Image, Modal, StatusBar, Platform, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, TextInput, TouchableOpacity, Image, Modal, StatusBar, ActivityIndicator, Alert } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useState, useEffect, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { fetchMyAddedProperties, deleteProject } from "../../store/slices/myAddedSlice";
+import { fetchMyAddedProperties, deleteProject, deleteProperty, fetchProjectDetails, fetchPropertyDetails } from "../../store/slices/myAddedSlice";
 import PropertyDetailSheet from "../../components/property/PropertyDetailSheet";
+import FilterModal from "../../components/FilterModal";
+
+const DEFAULT_BUDGET_RANGE = [2000000, 50000000];
+
+const isDefaultBudgetRange = (range) => (
+    Array.isArray(range) &&
+    Number(range[0]) === DEFAULT_BUDGET_RANGE[0] &&
+    Number(range[1]) === DEFAULT_BUDGET_RANGE[1]
+);
+
+const hasSelectedFilters = (filters) => {
+    if (!filters) return false;
+
+    return Boolean(
+        filters.category ||
+        filters.propertyTypes?.length ||
+        filters.bhks?.length ||
+        (filters.budgetRange && !isDefaultBudgetRange(filters.budgetRange))
+    );
+};
+
+const buildMyAddedFilters = ({ search, filters }) => {
+    const backendFilters = {};
+    const searchText = search.trim();
+
+    if (searchText) backendFilters.search = searchText;
+    if (!filters) return backendFilters;
+
+    if (filters.category) backendFilters.category = filters.category;
+    if (filters.propertyTypes?.length) {
+        backendFilters.property_type = filters.propertyTypes.join(",");
+    }
+    if (filters.bhks?.length) {
+        backendFilters.bhk_type = filters.bhks.join(",");
+    }
+    if (filters.budgetRange && !isDefaultBudgetRange(filters.budgetRange)) {
+        backendFilters.min_price = filters.budgetRange[0];
+        backendFilters.max_price = filters.budgetRange[1];
+    }
+
+    return backendFilters;
+};
 
 function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -16,15 +58,27 @@ function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
                        item.media?.find(m => m.media_type === 'image')?.url ||
                        item.cover_image_url;
     
-    // Format location
-    const location = `${item.area || ''}, ${item.city || ''}`.trim().replace(/^,\s*/, '');
+    // Format location - show city only (area field contains "TBD" or locality name)
+    const location = item.city || 'Location not set';
     
-    // Format price
-    const priceFrom = item.price_from || 0;
-    const priceTo = item.price_to || 0;
+    // Format price - use base_price as fallback if min_price/max_price are not set
+    const basePrice = item.base_price || 0;
+    const priceFrom = item.price_from || item.min_price || basePrice;
+    const priceTo = item.price_to || item.max_price || basePrice;
     const priceDisplay = priceTo > priceFrom 
         ? `₹${(priceFrom / 100000).toFixed(2)}L - ₹${(priceTo / 100000).toFixed(2)}L`
-        : `₹${(priceFrom / 100000).toFixed(2)}L`;
+        : basePrice > 0 
+            ? `₹${(basePrice / 100000).toFixed(2)}L`
+            : 'Price not set';
+
+    // Property name - backend normalizes projects to have 'title' field, properties have 'title' natively
+    const propertyName = item.name || item.title || 'Untitled Property';
+    
+    // Category - backend returns 'type' field for properties, projects have 'category'
+    const category = item.type || item.category || 'Property';
+    
+    // Total area - use total_area_sqft field, not 'area' (which is locality name)
+    const totalArea = item.total_area_sqft || item.total_area;
 
     return (
         <TouchableOpacity 
@@ -46,26 +100,26 @@ function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
             <View className="flex-1 ml-2.5">
                 <View className="flex-row items-center mb-0.5">
                     <View className="w-[7px] h-[7px] rounded-full bg-[#4A43EC] mr-1" />
-                    <Text className="text-[10px] text-[#4A43EC] italic capitalize">{item.category || 'Property'}</Text>
+                    <Text className="text-[10px] text-[#4A43EC] italic capitalize">{category}</Text>
                 </View>
                 <Text className="text-[14px] font-roboto-medium text-[#1a1a1a] mb-0.5" numberOfLines={1}>
-                    {item.name || 'Untitled Property'}
+                    {propertyName}
                 </Text>
                 <View className="flex-row items-center mb-0.5">
                     <Ionicons name="location" size={13} color="#FE8A71" />
                     <Text className="text-[10px] tracking-wide font-roboto text-gray-500 ml-1" numberOfLines={1}>{location}</Text>
                 </View>
                 <View className="flex-row gap-2.5 mb-1">
-                    {item.total_area && (
+                    {totalArea && (
                         <View className="flex-row items-center gap-1.5">
                             <MaterialCommunityIcons name="floor-plan" size={13} color="#FE8A71" />
-                            <Text className="text-[10px] italic text-gray-500">{item.total_area} {item.area_unit || 'sqft'}</Text>
+                            <Text className="text-[10px] italic text-gray-500">{totalArea} {item.area_unit || 'sqft'}</Text>
                         </View>
                     )}
-                    {item.property_subtype && (
+                    {(item.sub_type || item.property_subtype) && (
                         <View className="flex-row items-center gap-1.5">
                             <MaterialCommunityIcons name="bed" size={13} color="#FE8A71" />
-                            <Text className="text-[10px] italic text-gray-500">{item.property_subtype}</Text>
+                            <Text className="text-[10px] italic text-gray-500">{item.sub_type || item.property_subtype}</Text>
                         </View>
                     )}
                 </View>
@@ -114,43 +168,88 @@ export default function Favourite() {
     const [selectedProperty, setSelectedProperty] = useState(null);
     const [propertySheetVisible, setPropertySheetVisible] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [filterModalVisible, setFilterModalVisible] = useState(false);
+    const [activeFilters, setActiveFilters] = useState(null);
 
-    // Fetch properties on mount
+    // Fetch properties on mount (no filters initially)
     useEffect(() => {
         dispatch(fetchMyAddedProperties());
     }, [dispatch]);
 
     // Refresh properties every time the screen comes into focus
+    // AND reset filters to show all properties
     useFocusEffect(
         useCallback(() => {
+            console.log('🔄 [favourite.jsx] Tab focused - Resetting filters and refreshing');
+            // Clear filters
+            setActiveFilters(null);
+            setSearch("");
+            // Fetch all properties without filters
             dispatch(fetchMyAddedProperties());
         }, [dispatch])
     );
 
-    const filtered = properties.filter((p) =>
-        (p.name?.toLowerCase().includes(search.toLowerCase()) || false) ||
-        (p.city?.toLowerCase().includes(search.toLowerCase()) || false) ||
-        (p.area?.toLowerCase().includes(search.toLowerCase()) || false)
-    );
+    // Debounced search - fetch from backend when search changes
+    useEffect(() => {
+        // Don't trigger search if there's no search text and no filters
+        if (!search.trim() && !hasSelectedFilters(activeFilters)) return;
+        
+        const timer = setTimeout(() => {
+            dispatch(fetchMyAddedProperties(buildMyAddedFilters({ search, filters: activeFilters })));
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(timer);
+    }, [search, dispatch, activeFilters]);
+
+    const handleApplyFilters = (filters) => {
+        console.log('🔍 [favourite.jsx] Filters received from modal:', filters);
+        const nextActiveFilters = hasSelectedFilters(filters) ? filters : null;
+        const backendFilters = buildMyAddedFilters({ search, filters: nextActiveFilters });
+        
+        setActiveFilters(nextActiveFilters);
+        console.log('🔍 [favourite.jsx] Backend filters being sent:', backendFilters);
+        dispatch(fetchMyAddedProperties(backendFilters));
+    };
 
     const handleConfirmDelete = async () => {
         setDeleting(true);
         try {
-            await dispatch(deleteProject(deleteId)).unwrap();
+            // Check if it's a property or project based on item_type field
+            const itemToDelete = properties.find(item => item.id === deleteId);
+            const isProperty = itemToDelete?.item_type === 'property';
+            
+            if (isProperty) {
+                await dispatch(deleteProperty(deleteId)).unwrap();
+            } else {
+                await dispatch(deleteProject(deleteId)).unwrap();
+            }
             setDeleteId(null);
         } catch (error) {
             console.error('Delete failed:', error);
-            alert('Failed to delete project. Please try again.');
+            alert('Failed to delete. Please try again.');
         } finally {
             setDeleting(false);
         }
     };
 
     const handleEditPress = (item) => {
-        // Navigate to edit screen or show edit modal
-        // For now, we'll just log it
-        console.log('Edit project:', item.id);
-        alert('Edit functionality will be implemented in the add project flow');
+        // Check if it's a property or project
+        const isProperty = item?.item_type === 'property';
+        
+        // Fetch details and navigate to edit form
+        const fetchAction = isProperty ? fetchPropertyDetails : fetchProjectDetails;
+        
+        dispatch(fetchAction(item.id))
+            .unwrap()
+            .then(() => {
+                router.push({
+                    pathname: '/(tabs)/addProject',
+                    params: { itemId: item.id, mode: 'edit', itemType: isProperty ? 'property' : 'project' }
+                });
+            })
+            .catch((error) => {
+                Alert.alert('Error', `Failed to load details: ${error}`);
+            });
     };
 
     if (loading && properties.length === 0) {
@@ -194,25 +293,31 @@ export default function Favourite() {
                         onChangeText={setSearch}
                     />
                 </View>
-                <TouchableOpacity className="w-[44px] h-[44px] bg-[#EBF1FF] rounded-xl items-center justify-center">
+                <TouchableOpacity 
+                    className="w-[44px] h-[44px] bg-[#EBF1FF] rounded-xl items-center justify-center relative"
+                    onPress={() => setFilterModalVisible(true)}
+                >
                     <MaterialCommunityIcons name="filter-variant" size={22} color="#4A43EC" />
+                    {activeFilters && (
+                        <View className="absolute top-1 right-1 w-2 h-2 bg-[#FF3B30] rounded-full" />
+                    )}
                 </TouchableOpacity>
             </View>
 
             {/* List */}
-            {filtered.length === 0 && !loading ? (
+            {properties.length === 0 && !loading ? (
                 <View className="flex-1 items-center justify-center px-8">
                     <Ionicons name="folder-open-outline" size={64} color="#D1D5DB" />
                     <Text className="text-gray-400 font-lato-medium text-center text-sm mt-4">
-                        {search ? 'No properties match your search' : 'No properties added yet'}
+                        {search || activeFilters ? 'No properties match your filters' : 'No properties added yet'}
                     </Text>
                     <Text className="text-gray-400 font-lato-regular text-center text-xs mt-2">
-                        {!search && 'Add properties from the "Add Project" tab'}
+                        {!search && !activeFilters && 'Add properties from the "Add Project" tab'}
                     </Text>
                 </View>
             ) : (
                 <FlatList
-                    data={filtered}
+                    data={properties}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
                         <PropertyCard 
@@ -265,6 +370,12 @@ export default function Favourite() {
                 visible={propertySheetVisible}
                 item={selectedProperty}
                 onClose={() => setPropertySheetVisible(false)}
+            />
+
+            <FilterModal 
+                visible={filterModalVisible}
+                onClose={() => setFilterModalVisible(false)}
+                onApplyFilters={handleApplyFilters}
             />
         </View>
     );

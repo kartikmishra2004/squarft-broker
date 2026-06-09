@@ -101,24 +101,23 @@ export default function PropertyDetailSheet({
 
   // Handle different price formats from API
   const getFormattedPrice = () => {
-    // Check if price exists and is a number
+    // Check if price exists and is a number (dummy data)
     if (item.price && typeof item.price === 'number') {
       return `₹${item.price.toLocaleString("en-IN")}/m`;
     }
-    // Check for min_price and max_price (API format)
-    if (item.min_price && item.max_price) {
-      return `₹${(item.min_price / 100000).toFixed(2)}L - ₹${(item.max_price / 100000).toFixed(2)}L`;
+    
+    // Use base_price as fallback if min_price/max_price are not set
+    const basePrice = item.base_price || 0;
+    const priceFrom = item.price_from || item.min_price || basePrice;
+    const priceTo = item.price_to || item.max_price || basePrice;
+    
+    // Check for range pricing
+    if (priceTo > priceFrom) {
+      return `₹${(priceFrom / 100000).toFixed(2)}L - ₹${(priceTo / 100000).toFixed(2)}L`;
     }
-    // Check for price_from and price_to (API format)
-    if (item.price_from && item.price_to) {
-      return `₹${(item.price_from / 100000).toFixed(2)}L - ₹${(item.price_to / 100000).toFixed(2)}L`;
-    }
-    // Single price values
-    if (item.min_price) {
-      return `₹${(item.min_price / 100000).toFixed(2)}L`;
-    }
-    if (item.price_from) {
-      return `₹${(item.price_from / 100000).toFixed(2)}L`;
+    // Single price value
+    if (basePrice > 0) {
+      return `₹${(basePrice / 100000).toFixed(2)}L`;
     }
     return 'Price on request';
   };
@@ -283,7 +282,7 @@ export default function PropertyDetailSheet({
               {/* Stats Grid */}
               <View className="flex-row flex-wrap mx-4 justify-between mb-3 mt-4">
                 {[
-                  { label: "AREA", value: `${item.areaSqft || item.area || item.total_area || 'N/A'} sqft` },
+                  { label: "AREA", value: `${item.total_area_sqft || item.areaSqft || item.total_area || 'N/A'} sqft` },
                   { label: "BEDS", value: `${item.beds || item.bedrooms || 'N/A'} Units` },
                   { label: "BATHS", value: `${item.baths || item.bathrooms || 'N/A'} Units` },
                   { label: "VIEWS", value: item.views || "120+" },
