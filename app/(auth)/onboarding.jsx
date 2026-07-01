@@ -41,7 +41,7 @@ export default function Onboarding() {
                 <TouchableOpacity 
                     onPress={handleNext}
                     activeOpacity={0.8}
-                    className="bg-[#4A43EC] px-6 py-2.5 rounded-full shadow-lg flex-row items-center justify-center"
+                    className="bg-[#4848FF] px-6 py-2.5 rounded-full shadow-lg flex-row items-center justify-center"
                 >
                     <Text className="text-white text-[14px] font-bold tracking-widest">
                         NEXT
