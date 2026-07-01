@@ -3,16 +3,18 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { router, usePathname } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import { setKycCompleted } from '../store/slices/authSlice';
+import { fetchKyc } from '../store/slices/authSlice';
 import KycIllustration from './KycIllustration';
 
 const KycModal = () => {
     const dispatch = useDispatch();
     const pathname = usePathname();
     const bottomSheetModalRef = useRef(null);
-    const { isKycCompleted, isLoggedIn } = useSelector((state) => state.auth);
+    const { isKycCompleted, isLoggedIn, kycChecked, kycLoading, kycCheckFailed, token } = useSelector((state) => state.auth);
 
     const snapPoints = useMemo(() => ['75%'], []);
+    const shouldHideForRoute = pathname.includes('kyc') || pathname.includes('my-documents');
+    const shouldPromptKyc = isLoggedIn && kycChecked && !kycCheckFailed && !isKycCompleted && !shouldHideForRoute;
 
     const renderBackdrop = useCallback(
         (props) => (
@@ -28,12 +30,18 @@ const KycModal = () => {
     );
 
     useEffect(() => {
-        if (!isKycCompleted && isLoggedIn && !pathname.includes('kyc') && !pathname.includes('my-documents')) {
+        if (isLoggedIn && token && !kycChecked && !kycLoading) {
+            dispatch(fetchKyc());
+        }
+    }, [dispatch, isLoggedIn, kycChecked, kycLoading, token]);
+
+    useEffect(() => {
+        if (shouldPromptKyc) {
             bottomSheetModalRef.current?.present();
         } else {
             bottomSheetModalRef.current?.dismiss();
         }
-    }, [isKycCompleted, isLoggedIn, pathname]);
+    }, [shouldPromptKyc]);
 
     const handleCompleteKyc = () => {
         // Redirect to My Documents page to upload KYC documents
@@ -41,7 +49,7 @@ const KycModal = () => {
         router.push('/(screens)/my-documents');
     };
 
-    if (isKycCompleted || !isLoggedIn || pathname.includes('kyc') || pathname.includes('my-documents')) {
+    if (!shouldPromptKyc) {
         return null;
     }
 

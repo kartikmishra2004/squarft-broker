@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
@@ -26,9 +27,18 @@ import {
     uploadProjectMedia,
     resetProject,
 } from "../../store/slices/projectSlice";
+import { sendOtpApi, verifyOtpApi } from "../../store/slices/authSlice";
 import { clearCurrentItem } from "../../store/slices/myAddedSlice";
+import { clearPickedLocation } from "../../store/slices/locationSlice";
+import { clearPickedNearbyProject } from "../../store/slices/propertySlice";
+import { notifyPropertyUploaded } from "../../utils/notificationHelpers";
 
 const { width } = Dimensions.get("window");
+const DEFAULT_NEARBY_LATITUDE = 23.2599;
+const DEFAULT_NEARBY_LONGITUDE = 77.4126;
+const DEFAULT_NEARBY_RADIUS = 10;
+
+const firstParam = (value, fallback = "") => Array.isArray(value) ? value[0] || fallback : value || fallback;
 
 const steps = [
     { id: 1, title: "Basic Details" },
@@ -104,11 +114,16 @@ export default function AddProject() {
     const params = useLocalSearchParams();
     const { currentProjectId, loading: projectLoading, error: projectError, submitSuccess } = useSelector(state => state.project);
     const currentItem = useSelector(state => state.myAdded?.currentItem);
+    const pickedLocation = useSelector(state => state.location?.pickedLocation);
+    const pickedNearbyProject = useSelector(state => state.property?.pickedNearbyProject);
 
-    // Check if we're in edit mode
-    const isEditMode = params.mode === 'edit';
-    const editItemId = params.itemId;
-    const editItemType = params.itemType; // 'property' or 'project'
+    const routeMode = firstParam(params.mode, "add");
+    const editItemId = firstParam(params.itemId);
+    const editItemType = firstParam(params.itemType); // 'property' or 'project'
+    const currentItemId = currentItem?.id ? String(currentItem.id) : "";
+
+    // Edit mode is valid only when route params and loaded item agree.
+    const isEditMode = routeMode === 'edit' && !!editItemId && currentItemId === String(editItemId);
 
     console.log('=== AddProject Mount ===');
     console.log('Edit Mode:', isEditMode);
@@ -127,14 +142,21 @@ export default function AddProject() {
     const [priceNegotiable, setPriceNegotiable] = useState(false);
     const [taxExclude, setTaxExclude] = useState(false);
     const [agreed, setAgreed] = useState(false);
-    const [otp, setOtp] = useState(["", "", "", ""]);
-    const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+    const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+    const [ownerOtpToken, setOwnerOtpToken] = useState(null);
+    const [ownerOtpContact, setOwnerOtpContact] = useState("");
+    const [verifiedOwnerContact, setVerifiedOwnerContact] = useState("");
+    const [sendingOwnerOtp, setSendingOwnerOtp] = useState(false);
+    const [verifyingOwnerOtp, setVerifyingOwnerOtp] = useState(false);
+    const otpRefs = useRef([]);
 
     // Step 2 form state
     const [ownerName, setOwnerName] = useState("");
     const [ownerContact, setOwnerContact] = useState("");
     const [ownerEmail, setOwnerEmail] = useState("");
     const [ownerAddress, setOwnerAddress] = useState("");
+    const [ownerAddressLatitude, setOwnerAddressLatitude] = useState(null);
+    const [ownerAddressLongitude, setOwnerAddressLongitude] = useState(null);
 
     // Step 3 form state
     const [propertyName, setPropertyName] = useState("");
@@ -144,6 +166,8 @@ export default function AddProject() {
     const [city, setCity] = useState("");
     const [stateText, setStateText] = useState("");
     const [pincode, setPincode] = useState("");
+    const [propertyLatitude, setPropertyLatitude] = useState(null);
+    const [propertyLongitude, setPropertyLongitude] = useState(null);
     const [nearbyProject, setNearbyProject] = useState("");
     const [khasraNumber, setKhasraNumber] = useState("");
     const [propertyAge, setPropertyAge] = useState("");
@@ -162,8 +186,14 @@ export default function AddProject() {
         setSelectedBhk("1bhk");
         setOwnerName("");
         setOwnerContact("");
+        setOwnerOtpToken(null);
+        setOwnerOtpContact("");
+        setVerifiedOwnerContact("");
+        setOtp(["", "", "", "", "", ""]);
         setOwnerEmail("");
         setOwnerAddress("");
+        setOwnerAddressLatitude(null);
+        setOwnerAddressLongitude(null);
         setPropertyName("");
         setTowerNumber("");
         setFlatNumber("");
@@ -171,6 +201,8 @@ export default function AddProject() {
         setCity("");
         setStateText("");
         setPincode("");
+        setPropertyLatitude(null);
+        setPropertyLongitude(null);
         setNearbyProject("");
         setKhasraNumber("");
         setPropertyAge("");
@@ -192,6 +224,17 @@ export default function AddProject() {
             handleResetAllLocalFields();
         }
     }, [isEditMode, dispatch, handleResetAllLocalFields]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (routeMode !== "edit") {
+                console.log("🧹 [AddProject] Focused in add mode - clearing stale edit state");
+                dispatch(resetProject());
+                dispatch(clearCurrentItem());
+                handleResetAllLocalFields();
+            }
+        }, [dispatch, handleResetAllLocalFields, routeMode])
+    );
 
     // CLEANUP: Reset project and myAdded state when component unmounts
     useEffect(() => {
@@ -239,8 +282,14 @@ export default function AddProject() {
             const ownerNameValue = currentItem.owner_name || currentItem.title || currentItem.name || "";
             setOwnerName(ownerNameValue);
             setOwnerContact(currentItem.owner_contact || currentItem.contact_no || "");  
+            setOwnerOtpToken(null);
+            setOwnerOtpContact("");
+            setVerifiedOwnerContact("");
+            setOtp(["", "", "", "", "", ""]);
             setOwnerEmail(currentItem.owner_email || currentItem.contact_email || "");   
             setOwnerAddress(currentItem.owner_address || currentItem.description || "");
+            setOwnerAddressLatitude(currentItem.owner_latitude || null);
+            setOwnerAddressLongitude(currentItem.owner_longitude || null);
 
             const propertyNameValue = currentItem.title || currentItem.name || currentItem.property_name || "";
             setPropertyName(propertyNameValue);
@@ -250,6 +299,8 @@ export default function AddProject() {
             setCity(currentItem.city || "");
             setStateText(currentItem.state || "");
             setPincode(currentItem.pincode || "");
+            setPropertyLatitude(currentItem.latitude || null);
+            setPropertyLongitude(currentItem.longitude || null);
             setNearbyProject(currentItem.nearby_project || "");
             setKhasraNumber(currentItem.khasra_number || currentItem.khasra_no || "");  
             setPropertyAge(currentItem.property_age?.toString() || "");
@@ -302,10 +353,49 @@ export default function AddProject() {
     useEffect(() => {
         if (submitSuccess) {
             Alert.alert("Success", "Property updated successfully!", [
-                { text: "OK", onPress: () => { dispatch(resetProject()); router.back(); } }
+                { 
+                    text: "OK", 
+                    onPress: () => { 
+                        dispatch(resetProject()); 
+                        // Check if we can go back, otherwise navigate to home
+                        if (router.canGoBack()) {
+                            router.back();
+                        } else {
+                            router.replace('/(tabs)/home');
+                        }
+                    } 
+                }
             ]);
         }
     }, [dispatch, submitSuccess]);
+
+    useEffect(() => {
+        if (!pickedLocation) return;
+
+        if (pickedLocation.target === "owner_address") {
+            setOwnerAddress(pickedLocation.address || "");
+            setOwnerAddressLatitude(pickedLocation.latitude);
+            setOwnerAddressLongitude(pickedLocation.longitude);
+        }
+
+        if (pickedLocation.target === "property_location") {
+            setLocationText(pickedLocation.address || "");
+            setPropertyLatitude(pickedLocation.latitude);
+            setPropertyLongitude(pickedLocation.longitude);
+            if (pickedLocation.city) setCity(pickedLocation.city);
+            if (pickedLocation.state) setStateText(pickedLocation.state);
+            if (pickedLocation.pincode) setPincode(pickedLocation.pincode);
+        }
+
+        dispatch(clearPickedLocation());
+    }, [dispatch, pickedLocation]);
+
+    useEffect(() => {
+        if (!pickedNearbyProject) return;
+
+        setNearbyProject(pickedNearbyProject.name || "");
+        dispatch(clearPickedNearbyProject());
+    }, [dispatch, pickedNearbyProject]);
 
     // Area unit state
     const [totalAreaUnit, setTotalAreaUnit] = useState(areaUnits[0]);
@@ -340,59 +430,148 @@ export default function AddProject() {
     };
 
     const pickFromGallery = async () => {
-        if (pickerModal === "document") {
-            const result = await DocumentPicker.getDocumentAsync({
-                type: "*/*",
-                multiple: true,
-                copyToCacheDirectory: true,
+        try {
+            if (pickerModal === "document") {
+                const result = await DocumentPicker.getDocumentAsync({
+                    type: "*/*",
+                    multiple: true,
+                    copyToCacheDirectory: true,
+                });
+                uploadSheetRef.current?.dismiss();
+                setPickerModal(null);
+                if (!result.canceled) {
+                    setUploadedDocs(prev => [...prev, ...result.assets]);
+                }
+                return;
+            }
+            const granted = await requestPermission();
+            if (!granted) return;
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: 'images',
+                allowsMultipleSelection: true,
+                quality: 0.8,
             });
             uploadSheetRef.current?.dismiss();
             setPickerModal(null);
-            if (!result.canceled) {
-                setUploadedDocs(prev => [...prev, ...result.assets]);
+            if (!result.canceled && result.assets) {
+                setUploadedImages(prev => [...prev, ...result.assets]);
             }
-            return;
-        }
-        const granted = await requestPermission();
-        if (!granted) return;
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsMultipleSelection: true,
-            quality: 0.8,
-        });
-        uploadSheetRef.current?.dismiss();
-        setPickerModal(null);
-        if (!result.canceled) {
-            setUploadedImages(prev => [...prev, ...result.assets]);
+        } catch (error) {
+            console.error('[AddProject] Gallery picker error:', error);
+            uploadSheetRef.current?.dismiss();
+            setPickerModal(null);
+            Alert.alert(
+                'Image Picker Error',
+                'Unable to access gallery. Please check app permissions in Settings.',
+                [{ text: 'OK' }]
+            );
         }
     };
 
     const pickFromCamera = async () => {
-        if (pickerModal === "document") return; // no camera for documents
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") return;
-        const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-        uploadSheetRef.current?.dismiss();
-        setPickerModal(null);
-        if (!result.canceled) {
-            setUploadedImages(prev => [...prev, ...result.assets]);
+        try {
+            if (pickerModal === "document") return; // no camera for documents
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== "granted") return;
+            const result = await ImagePicker.launchCameraAsync({ 
+                quality: 0.8,
+                mediaTypes: 'images',
+            });
+            uploadSheetRef.current?.dismiss();
+            setPickerModal(null);
+            if (!result.canceled && result.assets) {
+                setUploadedImages(prev => [...prev, ...result.assets]);
+            }
+        } catch (error) {
+            console.error('[AddProject] Camera picker error:', error);
+            uploadSheetRef.current?.dismiss();
+            setPickerModal(null);
+            Alert.alert(
+                'Camera Error',
+                'Unable to access camera. Please check app permissions in Settings.',
+                [{ text: 'OK' }]
+            );
         }
     };
 
     const handleOtpChange = (text, index) => {
+        const digit = text.replace(/\D/g, "").slice(-1);
         const newOtp = [...otp];
-        newOtp[index] = text;
+        newOtp[index] = digit;
         setOtp(newOtp);
-        if (text && index < 3) {
-            otpRefs[index + 1].current?.focus();
+        if (digit && index < otp.length - 1) {
+            otpRefs.current[index + 1]?.focus();
         }
     };
 
     const handleOtpKeyPress = (e, index) => {
         if (e.nativeEvent.key === "Backspace" && !otp[index] && index > 0) {
-            otpRefs[index - 1].current?.focus();
+            otpRefs.current[index - 1]?.focus();
         }
     };
+
+    const cleanOwnerPhone = useCallback(() => ownerContact.trim().replace(/\D/g, ""), [ownerContact]);
+
+    const handleOwnerContactChange = useCallback((text) => {
+        setOwnerContact(text);
+        setOwnerOtpToken(null);
+        setOwnerOtpContact("");
+        setVerifiedOwnerContact("");
+        setOtp(["", "", "", "", "", ""]);
+    }, []);
+
+    const sendOwnerOtp = useCallback(async () => {
+        const phone = cleanOwnerPhone();
+        if (phone.length < 10) {
+            Alert.alert("OTP", "Enter a valid owner contact number.");
+            return;
+        }
+
+        try {
+            setSendingOwnerOtp(true);
+            const response = await dispatch(sendOtpApi({ phone, purpose: "owner_contact" })).unwrap();
+            setOwnerOtpToken(response.otp_token);
+            setOwnerOtpContact(phone);
+            setVerifiedOwnerContact("");
+            setOtp(["", "", "", "", "", ""]);
+            setTimeout(() => otpRefs.current[0]?.focus(), 80);
+            Alert.alert("OTP", "OTP sent to owner contact number.");
+        } catch (error) {
+            Alert.alert("OTP Failed", getErrorMessage(error));
+        } finally {
+            setSendingOwnerOtp(false);
+        }
+    }, [cleanOwnerPhone, dispatch]);
+
+    const verifyOwnerOtp = useCallback(async () => {
+        const phone = cleanOwnerPhone();
+        const otpCode = otp.join("");
+
+        if (!ownerOtpToken || ownerOtpContact !== phone) {
+            Alert.alert("OTP", "Please send OTP to this owner contact first.");
+            return false;
+        }
+
+        if (otpCode.length !== 6) {
+            Alert.alert("OTP", "Please enter the 6-digit OTP.");
+            return false;
+        }
+
+        try {
+            setVerifyingOwnerOtp(true);
+            const response = await dispatch(verifyOtpApi({ otp_token: ownerOtpToken, otp: otpCode })).unwrap();
+            if (!response.verified) throw new Error("OTP verification failed.");
+            setVerifiedOwnerContact(phone);
+            setOwnerOtpToken(null);
+            Alert.alert("OTP Verified", "Owner contact verified successfully.");
+            return true;
+        } catch (error) {
+            Alert.alert("Invalid OTP", getErrorMessage(error));
+            return false;
+        } finally {
+            setVerifyingOwnerOtp(false);
+        }
+    }, [cleanOwnerPhone, dispatch, otp, ownerOtpContact, ownerOtpToken]);
 
     const subTypes = selectedMainType ? (subTypesData[selectedMainType] || []) : [];
     const showBhk = selectedMainType === "residential" && selectedSubType && bhkSubTypes.includes(selectedSubType);
@@ -407,6 +586,31 @@ export default function AddProject() {
     const getActivePropertyId = useCallback(() => (
         isEditMode ? editItemId : currentProjectId
     ), [currentProjectId, editItemId, isEditMode]);
+
+    const openLocationPicker = useCallback((target) => {
+        const isOwnerTarget = target === "owner_address";
+        router.push({
+            pathname: "/(screens)/location-picker",
+            params: {
+                target,
+                title: isOwnerTarget ? "Owner Address" : "Property Location",
+                initialAddress: isOwnerTarget ? ownerAddress : locationText,
+                initialLatitude: String((isOwnerTarget ? ownerAddressLatitude : propertyLatitude) || ""),
+                initialLongitude: String((isOwnerTarget ? ownerAddressLongitude : propertyLongitude) || ""),
+            },
+        });
+    }, [locationText, ownerAddress, ownerAddressLatitude, ownerAddressLongitude, propertyLatitude, propertyLongitude]);
+
+    const openNearbyProjects = useCallback(() => {
+        router.push({
+            pathname: "/(screens)/nearby-projects",
+            params: {
+                latitude: String(propertyLatitude || DEFAULT_NEARBY_LATITUDE),
+                longitude: String(propertyLongitude || DEFAULT_NEARBY_LONGITUDE),
+                radius: String(DEFAULT_NEARBY_RADIUS),
+            },
+        });
+    }, [propertyLatitude, propertyLongitude]);
 
     const getErrorMessage = (error) => {
         if (typeof error === "string") return error;
@@ -455,13 +659,15 @@ export default function AddProject() {
             area: locationText.trim() || undefined,
             state: stateText.trim(),
             pincode: pincode.trim() || undefined,
+            latitude: propertyLatitude,
+            longitude: propertyLongitude,
             nearby_project: nearbyProject.trim() || undefined,
             khasra_number: khasraNumber.trim() || undefined,
             property_age: propertyAge ? Number(propertyAge) : undefined,
             owner_contact: ownerContact.trim().replace(/\s+/g, "") || undefined,
             owner_email: ownerEmail.trim() || undefined,
         })).unwrap();
-    }, [city, dispatch, flatNumber, khasraNumber, locationText, nearbyProject, ownerContact, ownerEmail, pincode, propertyAge, propertyName, stateText, towerNumber]);
+    }, [city, dispatch, flatNumber, khasraNumber, locationText, nearbyProject, ownerContact, ownerEmail, pincode, propertyAge, propertyLatitude, propertyLongitude, propertyName, stateText, towerNumber]);
 
     const saveAreaDetails = useCallback(async (propertyId) => {
         if (!totalAreaValue && !carpetAreaValue) return;
@@ -530,7 +736,12 @@ export default function AddProject() {
                             if (currentStep > 1) {
                                 setCurrentStep(prev => prev - 1);
                             } else {
-                                router.back();
+                                // Check if we can go back, otherwise navigate to home
+                                if (router.canGoBack()) {
+                                    router.back();
+                                } else {
+                                    router.replace('/(tabs)/home');
+                                }
                             }
                         }}
                         className="p-1"
@@ -739,10 +950,17 @@ export default function AddProject() {
                                         placeholderTextColor="#C0C0C0"
                                         keyboardType="phone-pad"
                                         value={ownerContact}
-                                        onChangeText={setOwnerContact}
+                                        onChangeText={handleOwnerContactChange}
                                     />
-                                    <TouchableOpacity>
-                                        <Text className="text-xs font-lato-bold text-[#4A43EC]">Send / Resend OTP</Text>
+                                    <TouchableOpacity
+                                        onPress={sendOwnerOtp}
+                                        disabled={sendingOwnerOtp}
+                                        activeOpacity={0.75}
+                                    >
+                                        {sendingOwnerOtp
+                                            ? <ActivityIndicator size="small" color="#4A43EC" />
+                                            : <Text className="text-xs font-lato-bold text-[#4A43EC]">Send / Resend OTP</Text>
+                                        }
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -750,25 +968,43 @@ export default function AddProject() {
                             {/* Enter OTP */}
                             <View>
                                 <Text className="text-sm font-lato-bold text-black mb-4">Enter OTP</Text>
-                                <View className="flex-row gap-9 ml-4">
-                                    {[0, 1, 2, 3].map((i) => (
+                                <View className="flex-row gap-2">
+                                    {otp.map((digit, i) => (
                                         <View
                                             key={i}
                                             className="bg-white border border-gray-200 rounded-xl items-center justify-center"
-                                            style={{ width: (width - 160) / 4, height: (width - 160) / 4 }}
+                                            style={{ width: (width - 82) / 6, height: (width - 82) / 6 }}
                                         >
                                             <TextInput
-                                                ref={otpRefs[i]}
+                                                ref={(ref) => { otpRefs.current[i] = ref; }}
                                                 className="text-xl font-lato-medium text-black text-center w-full h-full"
                                                 maxLength={1}
                                                 keyboardType="number-pad"
                                                 textAlign="center"
-                                                value={otp[i]}
+                                                value={digit}
                                                 onChangeText={(text) => handleOtpChange(text, i)}
                                                 onKeyPress={(e) => handleOtpKeyPress(e, i)}
                                             />
                                         </View>
                                     ))}
+                                </View>
+                                <View className="flex-row items-center justify-between mt-4">
+                                    <Text className={`text-xs font-lato-bold ${verifiedOwnerContact === cleanOwnerPhone() && cleanOwnerPhone() ? "text-green-600" : "text-gray-500"}`}>
+                                        {verifiedOwnerContact === cleanOwnerPhone() && cleanOwnerPhone()
+                                            ? "Owner contact verified"
+                                            : "Verify owner contact to continue"}
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={verifyOwnerOtp}
+                                        disabled={verifyingOwnerOtp}
+                                        activeOpacity={0.8}
+                                        className="px-4 py-2 rounded-lg bg-[#F0EFFD]"
+                                    >
+                                        {verifyingOwnerOtp
+                                            ? <ActivityIndicator size="small" color="#4A43EC" />
+                                            : <Text className="text-xs font-lato-bold text-[#4A43EC]">Verify OTP</Text>
+                                        }
+                                    </TouchableOpacity>
                                 </View>
                             </View>
 
@@ -797,9 +1033,13 @@ export default function AddProject() {
                                         value={ownerAddress}
                                         onChangeText={setOwnerAddress}
                                     />
-                                    <View className="w-9 h-9 rounded-xl bg-[#d2d0fa] items-center justify-center">
+                                    <TouchableOpacity
+                                        onPress={() => openLocationPicker("owner_address")}
+                                        activeOpacity={0.85}
+                                        className="w-9 h-9 rounded-xl bg-[#d2d0fa] items-center justify-center"
+                                    >
                                         <Ionicons name="locate" size={18} color="#4A43EC" />
-                                    </View>
+                                    </TouchableOpacity>
                                 </View>
                             </View>
 
@@ -811,6 +1051,10 @@ export default function AddProject() {
                                     disabled={projectLoading}
                                     onPress={async () => {
                                         try {
+                                            if (verifiedOwnerContact !== cleanOwnerPhone()) {
+                                                const verified = await verifyOwnerOtp();
+                                                if (!verified) return;
+                                            }
                                             const propertyId = getActivePropertyId();
                                             await saveOwnerDetails(propertyId);
                                             setCurrentStep(prev => prev + 1);
@@ -876,9 +1120,13 @@ export default function AddProject() {
                                         value={locationText}
                                         onChangeText={setLocationText}
                                     />
-                                    <View className="w-9 h-9 rounded-xl bg-[#d2d0fa] items-center justify-center">
+                                    <TouchableOpacity
+                                        onPress={() => openLocationPicker("property_location")}
+                                        activeOpacity={0.85}
+                                        className="w-9 h-9 rounded-xl bg-[#d2d0fa] items-center justify-center"
+                                    >
                                         <Ionicons name="locate" size={18} color="#4A43EC" />
-                                    </View>
+                                    </TouchableOpacity>
                                 </View>
                             </View>
 
@@ -929,7 +1177,13 @@ export default function AddProject() {
                                         value={nearbyProject}
                                         onChangeText={setNearbyProject}
                                     />
-                                    <Ionicons name="heart-outline" size={18} color="#C0C0C0" />
+                                    <TouchableOpacity
+                                        activeOpacity={0.8}
+                                        onPress={openNearbyProjects}
+                                        className="w-9 h-9 rounded-xl bg-[#F0EFFD] items-center justify-center ml-2"
+                                    >
+                                        <Ionicons name="heart-outline" size={18} color="#4A43EC" />
+                                    </TouchableOpacity>
                                 </View>
                             </View>
 
@@ -1220,6 +1474,14 @@ export default function AddProject() {
                                                     images: isEditMode ? newImages : (uploadedImages || []),
                                                     documents: isEditMode ? newDocs : (uploadedDocs || []),
                                                 })).unwrap();
+                                            }
+                                            
+                                            // Trigger notification for property upload (only for new properties)
+                                            if (!isEditMode) {
+                                                await notifyPropertyUploaded({ 
+                                                    propertyId, 
+                                                    propertyName: propertyName || ownerName || 'Your property'
+                                                });
                                             }
                                             
                                             Alert.alert(

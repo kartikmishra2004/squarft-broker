@@ -3,6 +3,15 @@ import { initialNotifications } from '../../data/notifications';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.31.27:3001';
 
+const parseMetadata = (metadata) => {
+    if (!metadata || typeof metadata === 'object') return metadata || {};
+    try {
+        return JSON.parse(metadata);
+    } catch {
+        return {};
+    }
+};
+
 export const fetchNotifications = createAsyncThunk(
     'notifications/fetch',
     async (_, { getState, rejectWithValue }) => {
@@ -70,7 +79,7 @@ const notificationSlice = createSlice({
             time: n.sent_at,
             watched: n.is_read,
             is_read: n.is_read,
-            metadata: n.metadata,
+            metadata: parseMetadata(n.metadata),
           }));
           state.unreadCount = state.list.filter(n => !n.is_read).length;
         }

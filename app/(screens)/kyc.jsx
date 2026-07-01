@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
 import { setKycCompleted, uploadKyc, fetchKyc } from '../../store/slices/authSlice';
 import { updateDocument } from '../../store/slices/documentSlice';
+import { notifyKycDocumentUploaded, notifyKycSubmitted } from '../../utils/notificationHelpers';
 
 
 const KycScreen = () => {
@@ -26,7 +27,7 @@ const KycScreen = () => {
     // Pre-fill if KYC already exists
     useEffect(() => {
         dispatch(fetchKyc());
-    }, []);
+    }, [dispatch]);
 
     useEffect(() => {
         if (kyc) {
@@ -35,19 +36,41 @@ const KycScreen = () => {
         }
     }, [kyc]);
 
-    const pickImage = async (setter, type = 'library') => {
-        let result;
-        if (type === 'camera') {
-            const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Permission needed', 'Camera permission is required.');
-                return;
+    const pickImage = async (setter, type = 'library', documentType) => {
+        try {
+            let result;
+            if (type === 'camera') {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== 'granted') {
+                    Alert.alert('Permission needed', 'Camera permission is required.');
+                    return;
+                }
+                result = await ImagePicker.launchCameraAsync({
+                    allowsEditing: true,
+                    aspect: [4, 3],
+                    quality: 0.8,
+                    mediaTypes: 'images',
+                });
+            } else {
+                result = await ImagePicker.launchImageLibraryAsync({
+                    allowsEditing: true,
+                    aspect: [4, 3],
+                    quality: 0.8,
+                    mediaTypes: 'images',
+                });
             }
-            result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 });
-        } else {
-            result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 });
+            if (!result.canceled && result.assets && result.assets[0]) {
+                setter(result.assets[0]);
+                await notifyKycDocumentUploaded({ documentType });
+            }
+        } catch (error) {
+            console.error('[KYC] Image picker error:', error);
+            Alert.alert(
+                'Image Picker Error',
+                'Unable to access image picker. Please try restarting the app or check app permissions in Settings.',
+                [{ text: 'OK' }]
+            );
         }
-        if (!result.canceled) setter(result.assets[0]);
     };
 
     const handleDone = async () => {
@@ -82,6 +105,10 @@ const KycScreen = () => {
             })));
 
             dispatch(setKycCompleted(true));
+
+            // Trigger notification for KYC submission
+            await notifyKycSubmitted();
+
             Alert.alert("KYC Submitted", "Your KYC has been submitted for verification.", [
                 { text: "OK", onPress: () => router.replace("/(tabs)/home") }
             ]);
@@ -180,7 +207,7 @@ const KycScreen = () => {
                 <UploadBox
                     label="Upload Aadhar Card Front View"
                     value={aadharFront}
-                    onPick={(type) => pickImage(setAadharFront, type)}
+                    onPick={(type) => pickImage(setAadharFront, type, 'aadharFront')}
                     onRemove={() => setAadharFront(null)}
                     icon="cloud-upload-outline"
                     existingUrl={kyc?.aadhar_front_url}
@@ -189,7 +216,7 @@ const KycScreen = () => {
                 <UploadBox
                     label="Upload Aadhar Card Back View"
                     value={aadharBack}
-                    onPick={(type) => pickImage(setAadharBack, type)}
+                    onPick={(type) => pickImage(setAadharBack, type, 'aadharBack')}
                     onRemove={() => setAadharBack(null)}
                     icon="cloud-upload-outline"
                     existingUrl={kyc?.aadhar_back_url}
@@ -212,7 +239,7 @@ const KycScreen = () => {
                 <UploadBox
                     label="Upload PAN Card"
                     value={panCard}
-                    onPick={(type) => pickImage(setPanCard, type)}
+                    onPick={(type) => pickImage(setPanCard, type, 'panCard')}
                     onRemove={() => setPanCard(null)}
                     icon="cloud-upload-outline"
                     existingUrl={kyc?.pan_card_url}
@@ -221,7 +248,7 @@ const KycScreen = () => {
                 <UploadBox
                     label="Upload Profile Picture / Selfie"
                     value={selfie}
-                    onPick={(type) => pickImage(setSelfie, type)}
+                    onPick={(type) => pickImage(setSelfie, type, 'selfie')}
                     onRemove={() => setSelfie(null)}
                     icon="camera-outline"
                     isCamera={true}

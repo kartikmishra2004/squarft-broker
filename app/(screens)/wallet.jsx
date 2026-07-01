@@ -5,12 +5,13 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { fetchWalletOverview, fetchBankAccounts, fetchTransactions, requestWithdrawalApi } from '../../store/slices/walletSlice';
+import { notifyWithdrawalRequested } from '../../utils/notificationHelpers';
 
 const WalletScreen = () => {
     const router = useRouter();
     const { withdraw } = useLocalSearchParams();
     const dispatch = useDispatch();
-    const { balance, bankAccounts, transactions, loading } = useSelector((state) => state.wallet);
+    const { balance, bankAccounts, transactions } = useSelector((state) => state.wallet);
     
     // States for view toggle and withdraw form
     const [isWithdrawMode, setIsWithdrawMode] = useState(false);
@@ -59,7 +60,13 @@ const WalletScreen = () => {
         }
 
         try {
-            await dispatch(requestWithdrawalApi({ requestedAmount: amount, bankAccountId: selectedBankId })).unwrap();
+            const requestedAmount = amount;
+            const result = await dispatch(requestWithdrawalApi({ requestedAmount, bankAccountId: selectedBankId })).unwrap();
+            await notifyWithdrawalRequested({
+                withdrawalAmount: requestedAmount,
+                withdrawalId: result.withdrawalId || result.transactionId,
+                requestedAt: new Date().toISOString(),
+            });
             setAmount('');
             setIsWithdrawMode(false);
             Alert.alert("Success", `₹${amount} withdrawal initiated successfully`);

@@ -3,7 +3,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect } from "react";
-import { markAllAsWatched, markAsWatched, fetchNotifications } from "../../store/slices/notificationSlice";
+import { markAllAsWatched, markAllReadApi, markAsWatched, fetchNotifications } from "../../store/slices/notificationSlice";
+import { resolveNotificationRoute } from "../../utils/notificationRoutes";
 
 export default function Notifications() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function Notifications() {
 
   useEffect(() => {
     dispatch(fetchNotifications());
-  }, []);
+  }, [dispatch]);
 
   const getIcon = (type) => {
     switch (type) {
@@ -64,7 +65,10 @@ export default function Notifications() {
         </Pressable>
         <Text className="text-[17px] text-[#1F2937] font-lato-bold">Notifications</Text>
         <Pressable 
-          onPress={() => dispatch(markAllAsWatched())}
+          onPress={() => {
+            dispatch(markAllAsWatched());
+            dispatch(markAllReadApi());
+          }}
           className="bg-[#4A43EC]/10 px-3 py-1.5 rounded-lg"
         >
           <Text className="text-[#4A43EC] text-[11px] font-manrope-bold">Mark all read</Text>
@@ -103,9 +107,7 @@ export default function Notifications() {
               className="flex-row mb-6 relative"
               onPress={() => {
                 dispatch(markAsWatched(item.id));
-                if (item.type === 'customer') {
-                  router.push("/(tabs)/home");
-                }
+                router.push(resolveNotificationRoute(item.metadata));
               }}
             >
               {getIcon(item.type)}

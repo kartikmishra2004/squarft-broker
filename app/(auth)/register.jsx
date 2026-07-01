@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { setName, setMobile, setPassword, setConfirmPassword, setOtpFlow, setProfileImage, clearProfileImage, sendOtpApi, clearError, registerUser, loginUser } from "../../store/slices/authSlice";
 import { ActivityIndicator } from "react-native";
+import { notifyRegistrationOtpSent } from "../../utils/notificationHelpers";
 
 const logo = require("../../assets/icons/app-icon.png");
 

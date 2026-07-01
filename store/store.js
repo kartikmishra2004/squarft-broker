@@ -9,6 +9,7 @@ import walletSlice from './slices/walletSlice';
 import brokerSlice from './slices/brokerSlice';
 import projectSlice from './slices/projectSlice';
 import propertySlice from './slices/propertySlice';
+import locationSlice from './slices/locationSlice';
 
 export const store = configureStore({
     reducer: {
@@ -22,5 +23,6 @@ export const store = configureStore({
         broker: brokerSlice,
         project: projectSlice,
         property: propertySlice,
+        location: locationSlice,
     },
 });

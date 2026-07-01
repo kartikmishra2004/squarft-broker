@@ -2,6 +2,67 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.31.27:3001';
 
+const toNumber = (value, fallback = 0) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+};
+
+const normalizeTransaction = (transaction = {}) => {
+    const rawType = transaction.type || transaction.transaction_type || '';
+    const type = String(rawType).toLowerCase();
+    const propertyName = transaction.property_name || transaction.propertyName || transaction.title || '';
+    const propertyAddress = transaction.property_address || transaction.propertyAddress || transaction.location || '';
+    const transferToDetails = transaction.transfer_to_details || transaction.transferToDetails || transaction.bank_name || transaction.bank || '';
+    const createdAt = transaction.created_at || transaction.createdAt || transaction.date || null;
+    const transactionNo = transaction.transactionNo || transaction.transaction_no || transaction.id?.toString() || '';
+
+    return {
+        ...transaction,
+        amount: toNumber(transaction.amount),
+        type,
+        property_name: propertyName,
+        propertyName,
+        property_address: propertyAddress,
+        propertyAddress,
+        transfer_to_details: transferToDetails,
+        transferToDetails,
+        bank_name: transferToDetails,
+        bank: transferToDetails || 'N/A',
+        created_at: createdAt,
+        createdAt,
+        title: propertyName || (type === 'credit' ? 'Commission' : 'Withdrawal'),
+        location: propertyAddress || (type === 'credit' ? 'Earned from property sale' : 'Withdrawal to bank'),
+        transactionNo,
+    };
+};
+
+const normalizeTransactionList = (transactions = []) =>
+    Array.isArray(transactions) ? transactions.map(normalizeTransaction) : [];
+
+const normalizeOverview = (overview = {}) => ({
+    balance: toNumber(overview.balance ?? overview.mainBalance ?? overview.main_balance),
+    totalEarned: toNumber(overview.totalEarned ?? overview.total_earned),
+    totalWithdrawn: toNumber(overview.totalWithdrawn ?? overview.total_withdrawn),
+    recentTransactions: normalizeTransactionList(overview.recentTransactions ?? overview.recent_transactions),
+});
+
+const normalizeTransactionPayload = (payload = {}) => ({
+    count: toNumber(payload.count),
+    page: toNumber(payload.page, 1),
+    transactions: normalizeTransactionList(payload.transactions),
+});
+
+const normalizeBankAccount = (account = {}) => ({
+    ...account,
+    bankName: account.bankName || account.bank_name || '',
+    accountNumberMasked: account.accountNumberMasked || account.account_number_masked || '',
+    ifscCode: account.ifscCode || account.ifsc_code || '',
+    isDefault: Boolean(account.isDefault ?? account.is_default),
+});
+
+const normalizeBankAccounts = (accounts = []) =>
+    Array.isArray(accounts) ? accounts.map(normalizeBankAccount) : [];
+
 // Async Thunks
 export const fetchWalletOverview = createAsyncThunk(
     'wallet/fetchWalletOverview',
@@ -13,7 +74,7 @@ export const fetchWalletOverview = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data; // returns { balance, totalEarned, totalWithdrawn }
+            return normalizeOverview(data.data);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -30,7 +91,7 @@ export const fetchTransactions = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data;
+            return normalizeTransactionPayload(data.data);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -47,7 +108,7 @@ export const fetchCommissionHistory = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data;
+            return normalizeTransactionPayload(data.data);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -64,7 +125,7 @@ export const fetchBankAccounts = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data;
+            return normalizeBankAccounts(data.data);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -86,7 +147,7 @@ export const addBankAccountApi = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.bankAccount;
+            return normalizeBankAccount(data.bankAccount);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -108,7 +169,10 @@ export const requestWithdrawalApi = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data;
+            return {
+                ...data.data,
+                newBalance: toNumber(data.data?.newBalance),
+            };
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -145,6 +209,9 @@ const walletSlice = createSlice({
                 state.balance = action.payload.balance;
                 state.totalEarned = action.payload.totalEarned;
                 state.totalWithdrawn = action.payload.totalWithdrawn;
+                if (action.payload.recentTransactions.length > 0 && state.transactions.length === 0) {
+                    state.transactions = action.payload.recentTransactions;
+                }
             })
             .addCase(fetchWalletOverview.rejected, (state, action) => {
                 state.loading = false;
@@ -166,7 +233,7 @@ const walletSlice = createSlice({
             })
             // Withdrawal
             .addCase(requestWithdrawalApi.fulfilled, (state, action) => {
-                state.balance -= action.payload.amount;
+                state.balance = action.payload.newBalance;
             })
             // Commission History
             .addCase(fetchCommissionHistory.pending, (state) => {
