@@ -13,9 +13,7 @@ export default function SplashScreen() {
             try {
                 await Asset.loadAsync([
                     require("../assets/images/splash-mobile.gif"),
-                    require("../assets/images/onboarding/onboarding1.gif"),
-                    require("../assets/images/onboarding/onboarding2.gif"),
-                    require("../assets/images/onboarding/onboarding3.gif"),
+                    require("../assets/images/onboarding.mp4"),
                 ]);
             } catch (err) {
                 console.log("Error preloading assets:", err);
@@ -25,7 +23,7 @@ export default function SplashScreen() {
         preloadAssets();
 
         const splashTimer = setTimeout(() => {
-            router.replace("/(auth)/onboarding1");
+            router.replace("/(auth)/onboarding");
         }, SPLASH_DURATION_MS);
 
         return () => clearTimeout(splashTimer);

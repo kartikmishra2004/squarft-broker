@@ -43,7 +43,8 @@
           }
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-video"
     ],
     "splash": {
       "image": "./assets/icons/icon.png",
