@@ -1,6 +1,7 @@
 import { Tabs, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
-import { Animated, Platform, Pressable } from "react-native";
+import { Animated, Platform, Pressable, View  } from "react-native";
+import { Image } from "expo-image";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
