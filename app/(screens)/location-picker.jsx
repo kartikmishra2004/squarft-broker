@@ -3,6 +3,8 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    Linking,
+    Platform,
     Pressable,
     StatusBar,
     Text,
@@ -133,8 +135,24 @@ export default function LocationPicker() {
     const [locating, setLocating] = useState(false);
 
     const canUseManual = query.trim().length > 0;
+    
     useEffect(() => {
         dispatch(clearLocationResults());
+        
+        // Request location permission on mount to enable "showsUserLocation"
+        (async () => {
+            try {
+                console.log('📍 Requesting location permission...');
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    console.log('✅ Location permission granted');
+                } else {
+                    console.log('❌ Location permission denied');
+                }
+            } catch (error) {
+                console.error('❌ Error requesting location permission:', error);
+            }
+        })();
     }, [dispatch]);
 
     const handleSearch = async () => {
@@ -166,13 +184,37 @@ export default function LocationPicker() {
     const handleLocateMe = async () => {
         try {
             setLocating(true);
+            console.log('📍 Starting location fetch...');
+            
             const permission = await Location.requestForegroundPermissionsAsync();
+            console.log('📍 Permission status:', permission.status);
+            
             if (permission.status !== "granted") {
-                Alert.alert("Location", "Location permission is required to use your current position.");
+                Alert.alert(
+                    "Location Permission Required", 
+                    "Please enable location permission in your device settings to use this feature.",
+                    [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Open Settings", onPress: () => {
+                            // For Android, this will open app settings
+                            if (Platform.OS === 'android') {
+                                Linking.openSettings();
+                            }
+                        }}
+                    ]
+                );
                 return;
             }
 
-            const currentPosition = await Location.getCurrentPositionAsync({});
+            console.log('📍 Fetching current position...');
+            const currentPosition = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+                timeInterval: 5000,
+                distanceInterval: 10,
+            });
+            
+            console.log('✅ Current position:', currentPosition.coords);
+            
             const nextRegion = {
                 ...mapRegion,
                 latitude: currentPosition.coords.latitude,
@@ -184,8 +226,12 @@ export default function LocationPicker() {
             setMapRegion(nextRegion);
             mapRef.current?.animateToRegion(nextRegion, 300);
             setSelected(null);
-        } catch (_) {
-            Alert.alert("Location", "Unable to fetch your current location.");
+        } catch (error) {
+            console.error('❌ Location error:', error);
+            Alert.alert(
+                "Location Error", 
+                "Unable to fetch your current location. Please ensure:\n\n1. Location is enabled in device settings\n2. You have granted location permission\n3. You are not in airplane mode"
+            );
         } finally {
             setLocating(false);
         }
@@ -326,12 +372,24 @@ export default function LocationPicker() {
                         ref={mapRef}
                         style={{ flex: 1 }}
                         initialRegion={mapRegion}
-                        showsUserLocation
+                        showsUserLocation={true}
                         showsMyLocationButton={false}
+                        showsCompass={true}
+                        showsScale={false}
+                        loadingEnabled={true}
+                        loadingIndicatorColor="#4A43EC"
+                        loadingBackgroundColor="#F8F9FE"
+                        moveOnMarkerPress={false}
                         onRegionChangeComplete={(region) => {
                             setMapRegion(region);
                         }}
                         onPanDrag={() => setSelected(null)}
+                        onMapReady={() => {
+                            console.log('✅ Map is ready');
+                        }}
+                        onError={(error) => {
+                            console.error('❌ Map error:', error);
+                        }}
                     />
                     <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
                         <View className="items-center" style={{ marginTop: -24 }}>
