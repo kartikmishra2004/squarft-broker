@@ -21,16 +21,11 @@ const { width } = Dimensions.get("window");
 const mainTabs = ["SELL"];
 const buyFilter = "Customer Requirement";
 
-const fallbackBranchEarningSummary = {
-  channelPartnerCount: 23,
-  monthlyEarningLabel: "10 Lakh",
-};
-
 const formatIndianEarningAmount = (amount) => {
   const numericAmount = Number(amount);
 
   if (amount === null || amount === undefined || !Number.isFinite(numericAmount)) {
-    return fallbackBranchEarningSummary.monthlyEarningLabel;
+    return "0";
   }
 
   if (numericAmount <= 0) return "0";
@@ -117,7 +112,7 @@ export default function Home() {
       brokerStats?.branch_channel_partner_count ??
       brokerStats?.branchChannelPartnerCount ??
       brokerStats?.channel_partner_count ??
-      fallbackBranchEarningSummary.channelPartnerCount;
+      0;
     const monthlyEarningLabel =
       summary.max_monthly_earning_label ??
       summary.maxMonthlyEarningLabel ??
@@ -129,10 +124,17 @@ export default function Home() {
         brokerStats?.branch_max_monthly_earning ??
         brokerStats?.branchMaxMonthlyEarning
       );
+    const branchName =
+      summary.branch_name ??
+      summary.branchName ??
+      brokerStats?.branch_name ??
+      brokerStats?.branchName ??
+      null;
 
     return {
       channelPartnerCount,
       monthlyEarningLabel,
+      branchName,
     };
   }, [brokerStats]);
 
@@ -305,11 +307,11 @@ export default function Home() {
               <View className="mx-0 mt-0 h-[25px] rounded-t-[20px] bg-[#C8B8FF]" />
               <View className="flex-1 items-center justify-center pb-2">
                 <Text className="text-center text-[16px] font-lato-bold text-[#1F2937]">
-                  {branchEarningSummary.channelPartnerCount} Channel Partner earn upto{" "}
+                  {branchEarningSummary.channelPartnerCount} Channel Partner{Number(branchEarningSummary.channelPartnerCount) === 1 ? "" : "s"} earn upto{" "}
                   <Text className="text-[#11B980]">{branchEarningSummary.monthlyEarningLabel}</Text>
                 </Text>
                 <Text className="mt-1 text-center text-[13px] font-lato-semibold text-[#374151]">
-                  In Your Area
+                  {branchEarningSummary.branchName ? `In ${branchEarningSummary.branchName}` : "In Your Area"}
                 </Text>
               </View>
             </View>

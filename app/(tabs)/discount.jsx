@@ -1,37 +1,53 @@
-import { View, Text, FlatList, TextInput, TouchableOpacity, StatusBar, Platform } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, FlatList, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons, FontAwesome6 } from "@expo/vector-icons";
-import { useState } from "react";
+import { FontAwesome6, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { fetchCommissionHistory } from "../../store/slices/walletSlice";
 
-const DUMMY_DATA = [
-    { id: 1, title: "Sunset Villa", location: "Mahalakshmi Nagar, Indore", price: 2510000, commission: 5, earned: 125000, date: "Mar 15, 2025", status: "Paid" },
-    { id: 2, title: "Fully Furnished 1 bhk Flat", location: "Mahalakshmi Nagar, Indore", price: 3050000, commission: 5, earned: 325000, date: "Mar 15, 2025", status: "Paid" },
-    { id: 3, title: "2 BHK Apartment", location: "Vijay Nagar, Indore", price: 4500000, commission: 3, earned: 135000, date: "Apr 2, 2025", status: "Pending" },
-];
+const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+};
+
+const formatAmount = (amount) =>
+    `\u20B9${Number(amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 
 function CommissionCard({ item }) {
-    const isPaid = item.status === "Paid";
+    const status = item.status || "CREDIT";
+    const title = item.propertyName || "Commission Earned";
+    const location = item.propertyAddress || "Property commission";
+
     return (
-        <View className="bg-white rounded-2xl mb-4 px-4 py-4 border border-1.5 border-[#E5E7EB]" >
+        <View className="bg-white rounded-2xl mb-4 px-4 py-4 border border-1.5 border-[#E5E7EB]">
             <View className="flex-row items-start justify-between mb-1">
-                <Text className="text-[15px] font-lato-bold text-[#1a1a1a] flex-1 mr-2" numberOfLines={1}>{item.title}</Text>
-                <View className={`px-5 py-0.5 rounded-full ${isPaid ? "bg-[#1E9500]" : "bg-[#FFC107]"}`}>
-                    <Text className="text-white text-[10px] font-roboto-medium">{item.status}</Text>
+                <Text className="text-[15px] font-lato-bold text-[#1a1a1a] flex-1 mr-2" numberOfLines={1}>
+                    {title}
+                </Text>
+                <View className="px-5 py-0.5 rounded-full bg-[#1E9500]">
+                    <Text className="text-white text-[10px] font-roboto-medium">{status}</Text>
                 </View>
             </View>
+
             <View className="flex-row items-center mb-5 mt-1">
                 <FontAwesome6 name="location-dot" size={15} color="#4A43EC" />
-                <Text className="text-[12px] text-gray-500 ml-2 font-lato">{item.location}</Text>
+                <Text className="text-[12px] text-gray-500 ml-2 font-lato flex-1" numberOfLines={1}>
+                    {location}
+                </Text>
             </View>
+
             <View className="flex-row items-center justify-between">
-                <Text className="text-[16px] font-roboto-regular tracking-wide text-[#4F46E5]">₹{item.price.toLocaleString("en-IN")}</Text>
-                <Text className="text-[16px] font-roboto-medium text-[#1E9500]">{item.commission}%</Text>
-            </View>
-            <View className="flex-row items-center justify-between mt-1">
-                <Text className="text-[16px] font-lato-medium text-[#1E9500]">₹{item.earned.toLocaleString("en-IN")}</Text>
-                <Text className="text-[12px] text-gray-400 font-roboto italic">{item.date}</Text>
+                <Text className="text-[16px] font-lato-medium text-[#1E9500]">
+                    +{formatAmount(item.amount)}
+                </Text>
+                <Text className="text-[12px] text-gray-400 font-roboto italic">
+                    {formatDate(item.createdAt)}
+                </Text>
             </View>
         </View>
     );
@@ -42,17 +58,32 @@ export default function Discount() {
     const dispatch = useDispatch();
     const router = useRouter();
     const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
+    const { commissions, loading, error } = useSelector((state) => state.wallet);
     const [search, setSearch] = useState("");
 
-    const filtered = DUMMY_DATA.filter((p) =>
-        p.title.toLowerCase().includes(search.toLowerCase()) ||
-        p.location.toLowerCase().includes(search.toLowerCase())
-    );
+    useEffect(() => {
+        dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
+    }, [dispatch]);
+
+    const filtered = useMemo(() => {
+        const query = search.trim().toLowerCase();
+        if (!query) return commissions || [];
+
+        return (commissions || []).filter((item) =>
+            (item.propertyName || "").toLowerCase().includes(query) ||
+            (item.propertyAddress || "").toLowerCase().includes(query) ||
+            String(item.amount || "").includes(query)
+        );
+    }, [commissions, search]);
+
+    const retry = () => {
+        dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
+    };
 
     return (
         <View className="flex-1 bg-white">
             <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-            {/* Header */}
+
             <View className="flex-row items-center justify-between px-5 pb-3" style={{ paddingTop: insets.top + 8 }}>
                 <View />
                 <Text className="text-[16px] text-black font-lato-bold ml-8">Commission History</Text>
@@ -69,7 +100,6 @@ export default function Discount() {
                 </TouchableOpacity>
             </View>
 
-            {/* Search */}
             <View className="flex-row px-5 mt-3 gap-2.5 mb-5">
                 <View className="flex-1 flex-row items-center bg-[#EBF1FF] rounded-xl px-3.5 h-[44px]">
                     <Ionicons name="search" size={18} color="#9CA3AF" />
@@ -86,14 +116,38 @@ export default function Discount() {
                 </TouchableOpacity>
             </View>
 
-            {/* List */}
-            <FlatList
-                data={filtered}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => <CommissionCard item={item} />}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140, paddingTop: 10 }}
-                showsVerticalScrollIndicator={false}
-            />
+            {loading ? (
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator size="large" color="#4A43EC" />
+                </View>
+            ) : error ? (
+                <View className="flex-1 items-center justify-center px-10">
+                    <MaterialCommunityIcons name="cash-remove" size={56} color="#D1D5DB" />
+                    <Text className="text-gray-400 text-[14px] font-manrope-medium mt-4 text-center">{error}</Text>
+                    <TouchableOpacity
+                        onPress={retry}
+                        className="bg-[#4A43EC] px-5 py-3 rounded-xl mt-5"
+                    >
+                        <Text className="text-white text-[12px] font-manrope-bold">Retry</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <FlatList
+                    data={filtered}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => <CommissionCard item={item} />}
+                    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140, paddingTop: 10, flexGrow: 1 }}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={
+                        <View className="flex-1 items-center justify-center px-10">
+                            <MaterialCommunityIcons name="cash-remove" size={56} color="#D1D5DB" />
+                            <Text className="text-gray-400 text-[14px] font-manrope-medium mt-4 text-center">
+                                {search ? "No commissions match your search" : "No commission history yet"}
+                            </Text>
+                        </View>
+                    }
+                />
+            )}
         </View>
     );
 }

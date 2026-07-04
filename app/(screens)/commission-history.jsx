@@ -8,7 +8,7 @@ import { fetchCommissionHistory } from '../../store/slices/walletSlice';
 const CommissionHistoryScreen = () => {
     const router = useRouter();
     const dispatch = useDispatch();
-    const { commissions, loading } = useSelector((state) => state.wallet);
+    const { commissions, loading, error } = useSelector((state) => state.wallet);
     const [searchText, setSearchText] = useState('');
 
     useEffect(() => {
@@ -19,6 +19,7 @@ const CommissionHistoryScreen = () => {
         if (!searchText || !Array.isArray(commissions)) return commissions || [];
         return commissions.filter(item =>
             (item.propertyName || '').toLowerCase().includes(searchText.toLowerCase()) ||
+            (item.propertyAddress || '').toLowerCase().includes(searchText.toLowerCase()) ||
             (item.amount?.toString() || '').includes(searchText)
         );
     }, [searchText, commissions]);
@@ -31,7 +32,7 @@ const CommissionHistoryScreen = () => {
     };
 
     const formatAmount = (amount) =>
-        `₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        `\u20B9${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
     return (
         <View className="flex-1 bg-white">
@@ -63,6 +64,19 @@ const CommissionHistoryScreen = () => {
             {loading ? (
                 <View className="flex-1 items-center justify-center">
                     <ActivityIndicator size="large" color="#4A43EC" />
+                </View>
+            ) : error ? (
+                <View className="flex-1 items-center justify-center px-10">
+                    <MaterialCommunityIcons name="cash-remove" size={56} color="#D1D5DB" />
+                    <Text className="text-gray-400 text-[14px] font-manrope-medium mt-4 text-center">
+                        {error}
+                    </Text>
+                    <Pressable
+                        onPress={() => dispatch(fetchCommissionHistory({ page: 1, limit: 100 }))}
+                        className="bg-[#4A43EC] px-5 py-3 rounded-xl mt-5"
+                    >
+                        <Text className="text-white text-[12px] font-manrope-bold">Retry</Text>
+                    </Pressable>
                 </View>
             ) : filtered.length === 0 ? (
                 <View className="flex-1 items-center justify-center px-10">

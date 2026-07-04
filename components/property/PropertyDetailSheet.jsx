@@ -70,7 +70,7 @@ const formatTextValue = (value, fallback = "N/A") => {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
-const formatReaStatus = (value) => {
+const formatReraStatus = (value) => {
   if (value === undefined || value === null || value === "") return "N/A";
   if (typeof value === "boolean") return value ? "Approved" : "Not Approved";
 
@@ -189,6 +189,7 @@ export default function PropertyDetailSheet({
   onClose,
   item,
   loading = false,
+  error = null,
 }) {
   const bottomSheetModalRef = useRef(null);
   const snapPoints = useMemo(() => ["99%"], []);
@@ -204,6 +205,12 @@ export default function PropertyDetailSheet({
       bottomSheetModalRef.current?.dismiss();
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (visible) {
+      setActiveTab("detail");
+    }
+  }, [visible, item?.id]);
 
   const renderBackdrop = useCallback(
     (props) => (
@@ -229,7 +236,12 @@ export default function PropertyDetailSheet({
     "subtype",
     "property_type",
   ]));
-  const reaStatus = formatReaStatus(firstValue(item, [
+  const reraStatus = formatReraStatus(firstValue(item, [
+    "rera_status",
+    "reraStatus",
+    "rera_approval_status",
+    "rera_approved",
+    "is_rera_approved",
     "rea_status",
     "reaStatus",
     "rea_approval_status",
@@ -243,6 +255,12 @@ export default function PropertyDetailSheet({
     "users_seen_count",
     "seen_count",
     "unique_view_count",
+  ]);
+  const totalArea = firstValue(item, [
+    "total_area_sqft",
+    "areaSqft",
+    "total_area",
+    "area",
   ]);
 
   // Handle different price formats from API
@@ -325,6 +343,13 @@ export default function PropertyDetailSheet({
               className="mx-5 rounded-2xl mb-14 border border-gray-300"
               contentContainerStyle={{ paddingBottom: 16 }}
             >
+              {error ? (
+                <View className="mx-4 mt-4 rounded-2xl bg-[#FFF1EF] border border-[#FFD7CF] px-4 py-3">
+                  <Text className="text-[12px] font-manrope-bold text-[#B42318]">Could not load latest details</Text>
+                  <Text className="text-[11px] font-manrope-medium text-[#B42318] mt-1">{error}</Text>
+                </View>
+              ) : null}
+
               {/* Hero Image Section */}
               <View style={{ height: 145, overflow: "hidden" }}>
                 <View style={{ flex: 1, flexDirection: "row" }}>
@@ -428,9 +453,9 @@ export default function PropertyDetailSheet({
               {/* Stats Grid */}
               <View className="flex-row flex-wrap mx-4 justify-between mb-3 mt-4">
                 {[
-                  { label: "AREA", value: `${item.total_area_sqft || item.areaSqft || item.total_aRERA|| 'N/A'} sqft` },
+                  { label: "AREA", value: totalArea ? `${totalArea} sqft` : "N/A" },
                   { label: "PROPERTY SUB-TYPE", value: propertySubtype },
-                  { label: "RERA STATUS", value: reaStatus },
+                  { label: "RERA STATUS", value: reraStatus },
                   { label: "VIEWS", value: views ?? "0" },
                 ].map((stat) => (
                   <View
@@ -468,7 +493,13 @@ export default function PropertyDetailSheet({
               className="mx-5 mb-5"
               contentContainerStyle={{ paddingBottom: 20 }}
             >
-              {loading ? (
+              {error ? (
+                <View className="py-10 items-center px-6">
+                  <Feather name="alert-circle" size={34} color="#FE8A71" />
+                  <Text className="text-[13px] font-manrope-bold text-[#B42318] mt-3 text-center">Could not load follow ups</Text>
+                  <Text className="text-[11px] font-manrope-medium text-[#B42318] mt-1 text-center">{error}</Text>
+                </View>
+              ) : loading ? (
                 <View className="py-10 items-center">
                   <ActivityIndicator size="small" color="#4A43EC" />
                   <Text className="text-[12px] font-manrope-medium text-gray-400 mt-3">Loading follow ups...</Text>

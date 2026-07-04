@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { fetchMyAddedProperties, deleteProject, deleteProperty, fetchProjectDetails, fetchPropertyDetails } from "../../store/slices/myAddedSlice";
 import PropertyDetailSheet from "../../components/property/PropertyDetailSheet";
@@ -167,9 +167,12 @@ export default function Favourite() {
     const [deleteId, setDeleteId] = useState(null);
     const [selectedProperty, setSelectedProperty] = useState(null);
     const [propertySheetVisible, setPropertySheetVisible] = useState(false);
+    const [propertyDetailLoading, setPropertyDetailLoading] = useState(false);
+    const [propertyDetailError, setPropertyDetailError] = useState(null);
     const [deleting, setDeleting] = useState(false);
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [activeFilters, setActiveFilters] = useState(null);
+    const detailRequestRef = useRef(0);
 
     // Fetch properties on mount (no filters initially)
     useEffect(() => {
@@ -252,6 +255,48 @@ export default function Favourite() {
             });
     };
 
+    const handlePropertyPress = useCallback((item) => {
+        if (!item?.id) return;
+
+        const requestId = detailRequestRef.current + 1;
+        detailRequestRef.current = requestId;
+        const isProperty = item?.item_type === 'property';
+        const fetchAction = isProperty ? fetchPropertyDetails : fetchProjectDetails;
+
+        setSelectedProperty(item);
+        setPropertySheetVisible(true);
+        setPropertyDetailLoading(true);
+        setPropertyDetailError(null);
+
+        dispatch(fetchAction(item.id))
+            .unwrap()
+            .then((details) => {
+                if (detailRequestRef.current !== requestId) return;
+                setSelectedProperty({
+                    ...item,
+                    ...details,
+                    item_type: details?.item_type || item.item_type,
+                });
+            })
+            .catch((error) => {
+                if (detailRequestRef.current !== requestId) return;
+                const message = typeof error === 'string' ? error : error?.message || 'Failed to load property details';
+                setPropertyDetailError(message);
+            })
+            .finally(() => {
+                if (detailRequestRef.current === requestId) {
+                    setPropertyDetailLoading(false);
+                }
+            });
+    }, [dispatch]);
+
+    const handleClosePropertySheet = useCallback(() => {
+        detailRequestRef.current += 1;
+        setPropertySheetVisible(false);
+        setPropertyDetailLoading(false);
+        setPropertyDetailError(null);
+    }, []);
+
     if (loading && properties.length === 0) {
         return (
             <View className="flex-1 bg-white items-center justify-center">
@@ -324,10 +369,7 @@ export default function Favourite() {
                             item={item} 
                             onDeletePress={setDeleteId}
                             onEditPress={handleEditPress}
-                            onPress={(prop) => {
-                                setSelectedProperty(prop);
-                                setPropertySheetVisible(true);
-                            }} 
+                            onPress={handlePropertyPress}
                         />
                     )}
                     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 150, paddingTop: 10 }}
@@ -369,7 +411,9 @@ export default function Favourite() {
             <PropertyDetailSheet 
                 visible={propertySheetVisible}
                 item={selectedProperty}
-                onClose={() => setPropertySheetVisible(false)}
+                loading={propertyDetailLoading}
+                error={propertyDetailError}
+                onClose={handleClosePropertySheet}
             />
 
             <FilterModal 

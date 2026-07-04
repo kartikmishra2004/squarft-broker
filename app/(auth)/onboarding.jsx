@@ -1,24 +1,16 @@
+import { Image } from "expo-image";
 import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
-import { useVideoPlayer, VideoView } from "expo-video";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const onboardingVideo = require("../../assets/images/onboarding.mp4");
+const onboardingImage = require("../../assets/images/splash-mobile.gif");
 
 export default function Onboarding() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
-    const player = useVideoPlayer(onboardingVideo, (player) => {
-        player.loop = false;
-        player.muted = false;
-        player.volume = 1.0;
-        player.play();
-    });
-
     const handleNext = () => {
-        player.pause();
         router.replace("/login");
     };
 
@@ -26,10 +18,9 @@ export default function Onboarding() {
         <View className="flex-1 bg-white">
             <StatusBar style="dark" hidden />
             
-            <VideoView
+            <Image
+                source={onboardingImage}
                 style={StyleSheet.absoluteFill}
-                player={player}
-                nativeControls={false}
                 contentFit="contain"
             />
 

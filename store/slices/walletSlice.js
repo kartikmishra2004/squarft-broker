@@ -52,6 +52,36 @@ const normalizeTransactionPayload = (payload = {}) => ({
     transactions: normalizeTransactionList(payload.transactions),
 });
 
+const normalizeCommission = (commission = {}) => {
+    const propertyName = commission.propertyName || commission.property_name || '';
+    const propertyAddress = commission.propertyAddress || commission.property_address || '';
+    const transferToDetails = commission.transferToDetails || commission.transfer_to_details || '';
+    const createdAt = commission.createdAt || commission.created_at || null;
+
+    return {
+        ...commission,
+        amount: toNumber(commission.amount),
+        propertyName,
+        property_name: propertyName,
+        propertyAddress,
+        property_address: propertyAddress,
+        transferToDetails,
+        transfer_to_details: transferToDetails,
+        createdAt,
+        created_at: createdAt,
+        type: commission.type || 'credit',
+        status: commission.status || 'CREDIT',
+    };
+};
+
+const normalizeCommissionPayload = (payload = {}) => ({
+    count: toNumber(payload.count),
+    page: toNumber(payload.page, 1),
+    commissions: Array.isArray(payload.transactions)
+        ? payload.transactions.map(normalizeCommission)
+        : [],
+});
+
 const normalizeBankAccount = (account = {}) => ({
     ...account,
     bankName: account.bankName || account.bank_name || '',
@@ -103,12 +133,16 @@ export const fetchCommissionHistory = createAsyncThunk(
     async ({ page = 1, limit = 10 } = {}, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
-            const response = await fetch(`${API_BASE_URL}/api/v1/broker/wallet/commissionHistory?page=${page}&limit=${limit}`, {
+            const params = new URLSearchParams({
+                page: String(page),
+                limit: String(limit),
+            });
+            const response = await fetch(`${API_BASE_URL}/api/v1/broker/wallet/commissionHistory?${params.toString()}`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             const data = await response.json();
-            if (!response.ok) return rejectWithValue(data.message);
-            return normalizeTransactionPayload(data.data);
+            if (!response.ok) return rejectWithValue(data.message || 'Failed to fetch commission history');
+            return normalizeCommissionPayload(data.data);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -191,7 +225,9 @@ const walletSlice = createSlice({
         loading: false,
         error: null,
         transactionCount: 0,
+        commissionCount: 0,
         currentPage: 1,
+        currentCommissionPage: 1,
     },
     reducers: {
         clearWalletError: (state) => {
@@ -238,10 +274,13 @@ const walletSlice = createSlice({
             // Commission History
             .addCase(fetchCommissionHistory.pending, (state) => {
                 state.loading = true;
+                state.error = null;
             })
             .addCase(fetchCommissionHistory.fulfilled, (state, action) => {
                 state.loading = false;
-                state.commissions = action.payload?.transactions || [];
+                state.commissions = action.payload.commissions;
+                state.commissionCount = action.payload.count;
+                state.currentCommissionPage = action.payload.page;
             })
             .addCase(fetchCommissionHistory.rejected, (state, action) => {
                 state.loading = false;
