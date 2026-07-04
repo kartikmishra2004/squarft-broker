@@ -12,7 +12,6 @@ import {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSelector, useDispatch } from "react-redux";
-import { upcomingProjectsData } from "../../data/properties";
 import { fetchBrokerStats, fetchMyProjects } from "../../store/slices/brokerSlice";
 import { fetchUserProfile } from "../../store/slices/authSlice";
 import { fetchShortlistedProperties } from "../../store/slices/propertySlice";
@@ -21,6 +20,31 @@ const { width } = Dimensions.get("window");
 
 const mainTabs = ["SELL"];
 const buyFilter = "Customer Requirement";
+
+const fallbackBranchEarningSummary = {
+  channelPartnerCount: 23,
+  monthlyEarningLabel: "10 Lakh",
+};
+
+const formatIndianEarningAmount = (amount) => {
+  const numericAmount = Number(amount);
+
+  if (amount === null || amount === undefined || !Number.isFinite(numericAmount)) {
+    return fallbackBranchEarningSummary.monthlyEarningLabel;
+  }
+
+  if (numericAmount <= 0) return "0";
+
+  if (numericAmount >= 10000000) {
+    return `${(numericAmount / 10000000).toFixed(numericAmount % 10000000 === 0 ? 0 : 1)} Cr`;
+  }
+
+  if (numericAmount >= 100000) {
+    return `${(numericAmount / 100000).toFixed(numericAmount % 100000 === 0 ? 0 : 1)} Lakh`;
+  }
+
+  return numericAmount.toLocaleString("en-IN");
+};
 
 // Property type categories - matching FilterModal structure
 const propertyCategories = [
@@ -56,7 +80,6 @@ export default function Home() {
   const dispatch = useDispatch();
   const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
   const brokerStats = useSelector(state => state.broker?.stats);
-  const apiProjects = useSelector(state => state.broker?.projects || []);
   const user = useSelector(state => state.auth?.user);
   const shortlistedProperties = useSelector(state => state.property?.shortlistedProperties || []);
   const shortlistedLoading = useSelector(state => state.property?.shortlistedLoading || false);
@@ -65,7 +88,7 @@ export default function Home() {
     dispatch(fetchBrokerStats());
     dispatch(fetchMyProjects());
     dispatch(fetchUserProfile());
-  }, []);
+  }, [dispatch]);
 
   const stats = [
     { label: "Total Properties", count: brokerStats?.total_properties ?? 0 },
@@ -74,11 +97,6 @@ export default function Home() {
     { label: "Rejected",         count: brokerStats?.rejected         ?? 0 },
   ];
 
-  const projects = useMemo(() => {
-    if (apiProjects.length > 0) return apiProjects;
-    return upcomingProjectsData;
-  }, [apiProjects]);
-  
   // Get subtypes based on selected category
   const currentSubTypes = useMemo(() => {
     if (!selectedCategory) return [];
@@ -90,6 +108,33 @@ export default function Home() {
   const shortlistedCount = useMemo(() => {
     return shortlistedProperties.length;
   }, [shortlistedProperties]);
+
+  const branchEarningSummary = useMemo(() => {
+    const summary = brokerStats?.branch_channel_partner_earning_summary || brokerStats?.branchEarningSummary || {};
+    const channelPartnerCount =
+      summary.channel_partner_count ??
+      summary.channelPartnerCount ??
+      brokerStats?.branch_channel_partner_count ??
+      brokerStats?.branchChannelPartnerCount ??
+      brokerStats?.channel_partner_count ??
+      fallbackBranchEarningSummary.channelPartnerCount;
+    const monthlyEarningLabel =
+      summary.max_monthly_earning_label ??
+      summary.maxMonthlyEarningLabel ??
+      brokerStats?.branch_max_monthly_earning_label ??
+      brokerStats?.branchMaxMonthlyEarningLabel ??
+      formatIndianEarningAmount(
+        summary.max_monthly_earning ??
+        summary.maxMonthlyEarning ??
+        brokerStats?.branch_max_monthly_earning ??
+        brokerStats?.branchMaxMonthlyEarning
+      );
+
+    return {
+      channelPartnerCount,
+      monthlyEarningLabel,
+    };
+  }, [brokerStats]);
 
   const handleFilterPress = (filter) => {
     if (filter === "Customer Requirement") {
@@ -254,15 +299,20 @@ export default function Home() {
         </View>
 
         <View className="px-[10px] pt-[15px]">
-            {/* Promotional Image - Replace "23 Channel Partner" section */}
+          {/* Branch channel partner earning summary */}
           <View className="mb-6 px-2">
-            <Pressable className="w-full h-[100px] rounded-[20px] overflow-hidden">
-              <Image
-                source={require("../../assets/images/avgearning.png")}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            </Pressable>
+            <View className="h-[100px] w-full overflow-hidden rounded-[20px] bg-white">
+              <View className="mx-0 mt-0 h-[25px] rounded-t-[20px] bg-[#C8B8FF]" />
+              <View className="flex-1 items-center justify-center pb-2">
+                <Text className="text-center text-[16px] font-lato-bold text-[#1F2937]">
+                  {branchEarningSummary.channelPartnerCount} Channel Partner earn upto{" "}
+                  <Text className="text-[#11B980]">{branchEarningSummary.monthlyEarningLabel}</Text>
+                </Text>
+                <Text className="mt-1 text-center text-[13px] font-lato-semibold text-[#374151]">
+                  In Your Area
+                </Text>
+              </View>
+            </View>
           </View>
 
           {/* Property Type Selection - New Design */}
