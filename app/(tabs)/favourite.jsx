@@ -81,78 +81,115 @@ function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
     const totalArea = item.total_area_sqft || item.total_area;
 
     return (
-        <TouchableOpacity 
-            activeOpacity={0.7}
-            onPress={() => onPress?.(item)}
-            className="flex-row bg-white border border-[#E5E7EB] rounded-[20px] mb-4 p-3 items-start" 
-        >
-            {coverImage ? (
-                <Image 
-                    source={{ uri: coverImage }} 
-                    className="w-[108px] h-[105px] rounded-2xl" 
-                    resizeMode="cover" 
+        <>
+            {/* Backdrop - closes menu when tapping outside */}
+            {menuOpen && (
+                <TouchableOpacity 
+                    activeOpacity={1}
+                    onPress={() => setMenuOpen(false)}
+                    className="absolute inset-0 z-[9]"
+                    style={{ 
+                        position: 'absolute',
+                        top: -1000,
+                        bottom: -1000,
+                        left: -1000,
+                        right: -1000,
+                    }}
                 />
-            ) : (
-                <View className="w-[108px] h-[105px] rounded-2xl bg-gray-200 items-center justify-center">
-                    <Ionicons name="image-outline" size={40} color="#9CA3AF" />
-                </View>
             )}
-            <View className="flex-1 ml-2.5">
-                <View className="flex-row items-center mb-0.5">
-                    <View className="w-[7px] h-[7px] rounded-full bg-[#4A43EC] mr-1" />
-                    <Text className="text-[10px] text-[#4A43EC] italic capitalize">{category}</Text>
-                </View>
-                <Text className="text-[14px] font-roboto-medium text-[#1a1a1a] mb-0.5" numberOfLines={1}>
-                    {propertyName}
-                </Text>
-                <View className="flex-row items-center mb-0.5">
-                    <Ionicons name="location" size={13} color="#FE8A71" />
-                    <Text className="text-[10px] tracking-wide font-roboto text-gray-500 ml-1" numberOfLines={1}>{location}</Text>
-                </View>
-                <View className="flex-row gap-2.5 mb-1">
-                    {totalArea && (
-                        <View className="flex-row items-center gap-1.5">
-                            <MaterialCommunityIcons name="floor-plan" size={13} color="#FE8A71" />
-                            <Text className="text-[10px] italic text-gray-500">{totalArea} {item.area_unit || 'sqft'}</Text>
-                        </View>
-                    )}
-                    {(item.sub_type || item.property_subtype) && (
-                        <View className="flex-row items-center gap-1.5">
-                            <MaterialCommunityIcons name="bed" size={13} color="#FE8A71" />
-                            <Text className="text-[10px] italic text-gray-500">{item.sub_type || item.property_subtype}</Text>
-                        </View>
-                    )}
-                </View>
-                <Text className="text-[16px] font-bold text-[#4F46E5]">
-                    {priceDisplay}
-                </Text>
-            </View>
 
-            {/* 3-dot menu */}
-            <View className="items-end">
-                <TouchableOpacity className="p-1" onPress={() => setMenuOpen((v) => !v)}>
-                    <Feather name="more-vertical" size={18} color="#333" />
-                </TouchableOpacity>
-                {menuOpen && (
-                    <View className="absolute top-7 right-0 bg-[#4F46E5] rounded-xl overflow-hidden z-10" style={{ elevation: 8, minWidth: 120 }}>
-                        <TouchableOpacity
-                            className="flex-row items-center gap-2.5 px-4 py-3 border-b border-[#6B63F0]"
-                            onPress={() => { setMenuOpen(false); onEditPress?.(item); }}
-                        >
-                            <Feather name="edit-2" size={15} color="#fff" />
-                            <Text className="text-white text-[14px] font-roboto-medium">Edit</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="flex-row items-center gap-2.5 px-4 py-3"
-                            onPress={() => { setMenuOpen(false); onDeletePress(item.id); }}
-                        >
-                            <Feather name="trash-2" size={15} color="#fff" />
-                            <Text className="text-white text-[14px] font-roboto-medium">Delete</Text>
-                        </TouchableOpacity>
+            <TouchableOpacity 
+                activeOpacity={0.7}
+                onPress={() => onPress?.(item)}
+                className="flex-row bg-white border border-[#E5E7EB] rounded-[20px] mb-4 p-3 items-start" 
+            >
+                {coverImage ? (
+                    <Image 
+                        source={{ uri: coverImage }} 
+                        className="w-[108px] h-[105px] rounded-2xl" 
+                        resizeMode="cover" 
+                    />
+                ) : (
+                    <View className="w-[108px] h-[105px] rounded-2xl bg-gray-200 items-center justify-center">
+                        <Ionicons name="image-outline" size={40} color="#9CA3AF" />
                     </View>
                 )}
-            </View>
-        </TouchableOpacity>
+                <View className="flex-1 ml-2.5">
+                    <View className="flex-row items-center mb-0.5">
+                        <View className="w-[7px] h-[7px] rounded-full bg-[#4A43EC] mr-1" />
+                        <Text className="text-[10px] text-[#4A43EC] italic capitalize">{category}</Text>
+                    </View>
+                    <Text className="text-[14px] font-roboto-medium text-[#1a1a1a] mb-0.5" numberOfLines={1}>
+                        {propertyName}
+                    </Text>
+                    <View className="flex-row items-center mb-0.5">
+                        <Ionicons name="location" size={13} color="#FE8A71" />
+                        <Text className="text-[10px] tracking-wide font-roboto text-gray-500 ml-1" numberOfLines={1}>{location}</Text>
+                    </View>
+                    <View className="flex-row gap-2.5 mb-1">
+                        {totalArea && (
+                            <View className="flex-row items-center gap-1.5">
+                                <MaterialCommunityIcons name="floor-plan" size={13} color="#FE8A71" />
+                                <Text className="text-[10px] italic text-gray-500">{totalArea} {item.area_unit || 'sqft'}</Text>
+                            </View>
+                        )}
+                        {(item.sub_type || item.property_subtype) && (
+                            <View className="flex-row items-center gap-1.5">
+                                <MaterialCommunityIcons name="bed" size={13} color="#FE8A71" />
+                                <Text className="text-[10px] italic text-gray-500">{item.sub_type || item.property_subtype}</Text>
+                            </View>
+                        )}
+                    </View>
+                    <Text className="text-[16px] font-bold text-[#4F46E5]">
+                        {priceDisplay}
+                    </Text>
+                </View>
+
+                {/* 3-dot menu with improved touch target and backdrop dismiss */}
+                <View className="items-end z-10">
+                    <TouchableOpacity 
+                        className="p-2.5" 
+                        onPress={() => setMenuOpen((v) => !v)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        activeOpacity={0.6}
+                    >
+                        <Feather name="more-vertical" size={18} color="#333" />
+                    </TouchableOpacity>
+                    {menuOpen && (
+                        <View 
+                            className="absolute top-10 right-0 bg-[#4F46E5] rounded-xl overflow-hidden" 
+                            style={{ 
+                                elevation: 12, 
+                                minWidth: 130,
+                                shadowColor: '#4F46E5',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 8,
+                            }}
+                        >
+                            <TouchableOpacity
+                                className="flex-row items-center gap-2.5 px-4 py-3.5 border-b border-[#6B63F0]"
+                                onPress={() => { setMenuOpen(false); onEditPress?.(item); }}
+                                activeOpacity={0.8}
+                                style={{ backgroundColor: '#4F46E5' }}
+                            >
+                                <Feather name="edit-2" size={16} color="#fff" />
+                                <Text className="text-white text-[14px] font-roboto-medium">Edit</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                className="flex-row items-center gap-2.5 px-4 py-3.5"
+                                onPress={() => { setMenuOpen(false); onDeletePress(item.id); }}
+                                activeOpacity={0.8}
+                                style={{ backgroundColor: '#4F46E5' }}
+                            >
+                                <Feather name="trash-2" size={16} color="#fff" />
+                                <Text className="text-white text-[14px] font-roboto-medium">Delete</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+            </TouchableOpacity>
+        </>
     );
 }
 
