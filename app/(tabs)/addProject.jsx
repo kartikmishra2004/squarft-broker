@@ -225,8 +225,32 @@ export default function AddProject() {
         }
     }, [isEditMode, dispatch, handleResetAllLocalFields]);
 
+    // State to track if we're returning from location/nearby picker
+    const isReturningFromPicker = useRef(false);
+
+    useEffect(() => {
+        // Mark that we're returning from picker if pickedLocation or pickedNearbyProject exists
+        if (pickedLocation || pickedNearbyProject) {
+            console.log('🔄 [AddProject] Detected picker data - marking as returning from picker');
+            console.log('  - pickedLocation:', !!pickedLocation);
+            console.log('  - pickedNearbyProject:', !!pickedNearbyProject);
+            isReturningFromPicker.current = true;
+        }
+    }, [pickedLocation, pickedNearbyProject]);
+
     useFocusEffect(
         useCallback(() => {
+            console.log('👁️ [AddProject] useFocusEffect triggered');
+            console.log('  - isReturningFromPicker:', isReturningFromPicker.current);
+            console.log('  - routeMode:', routeMode);
+            
+            // Don't reset if returning from location/nearby picker
+            if (isReturningFromPicker.current) {
+                console.log("✅ [AddProject] Returning from picker - preserving state");
+                isReturningFromPicker.current = false;
+                return;
+            }
+
             if (routeMode !== "edit") {
                 console.log("🧹 [AddProject] Focused in add mode - clearing stale edit state");
                 dispatch(resetProject());
@@ -904,20 +928,35 @@ export default function AddProject() {
                                         
                                         try {
                                             let kindOfProperty = null;
+                                            let bedrooms = null;
                                             
                                             if (selectedMainType === "residential" && showBhk) {
                                                 kindOfProperty = selectedBhk;
+                                                // Extract bedroom number from BHK selection (e.g., "3_bhk" -> 3, "5_plus_bhk" -> 5)
+                                                const bhkMatch = selectedBhk.match(/^(\d+)/);
+                                                if (bhkMatch) {
+                                                    bedrooms = parseInt(bhkMatch[1], 10);
+                                                    console.log(`🛏️ [AddProject] Extracted ${bedrooms} bedrooms from ${selectedBhk}`);
+                                                }
                                             }
                                             else if (selectedMainType === "commercial" && showKind) {
                                                 kindOfProperty = selectedKind;
                                             }
                                             
-                                            await dispatch(createBasicDetails({
+                                            const payload = {
                                                 category: selectedMainType,
                                                 property_type: selectedSubType,
                                                 kind_of_property: kindOfProperty,
                                                 listing_type: 'buy'
-                                            })).unwrap();
+                                            };
+                                            
+                                            // Add bedrooms field if extracted from BHK
+                                            if (bedrooms !== null) {
+                                                payload.bedrooms = bedrooms;
+                                            }
+                                            
+                                            console.log('📤 [AddProject] Creating basic details with payload:', payload);
+                                            await dispatch(createBasicDetails(payload)).unwrap();
                                             setCurrentStep(prev => prev + 1);
                                         } catch (_) {}
                                     }}

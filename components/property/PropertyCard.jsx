@@ -22,26 +22,22 @@ const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
     // Handle date
     const date = item.date || new Date(item.created_at || Date.now()).toLocaleDateString();
     
-    // Handle RERA status - check multiple possible fields same as modal
-    const getReraStatus = () => {
-        const reraValue = item.rera_status || item.reraStatus || item.rera_approval_status || 
-                         item.rera_approved || item.is_rera_approved || 
-                         item.rea_status || item.reaStatus || item.rea_approval_status || 
-                         item.rea_approved || item.is_rea_approved;
-        
-        if (reraValue === undefined || reraValue === null || reraValue === '') return 'N/A';
-        if (typeof reraValue === 'boolean') return reraValue ? 'Approved' : 'Not Approved';
-        
-        const normalized = String(reraValue).trim().toLowerCase().replace(/[\s-]+/g, '_');
-        if (normalized === 'approved' || normalized === 'yes' || normalized === 'true') return 'Approved';
-        if (normalized === 'not_approved' || normalized === 'unapproved' || normalized === 'no' || normalized === 'false') return 'Not Approved';
-        
-        // Format the value nicely
-        return String(reraValue).replace(/_/g, ' ').replace(/\s+/g, ' ').trim()
-               .replace(/\b\w/g, (char) => char.toUpperCase());
-    };
+    // 🔄 FIXED: Strictly check the 'approval_status' column values exclusively
+    const rawStatus = String(item.approval_status || '').trim().toLowerCase();
     
-    const status = getReraStatus();
+    let status = 'Pending'; // Default state if it's empty or processing
+    if (rawStatus === 'approved') {
+        status = 'Approved';
+    } else if (rawStatus === 'not approved' || rawStatus === 'rejected') {
+        status = 'Not Approved';
+    } else if (rawStatus === 'pending') {
+        status = 'Pending';
+    } else if (rawStatus === '') {
+        status = 'N/A'; // Keeps your baseline fallback clean if columns are unpopulated
+    } else {
+        // Fallback for any other custom string the backend might pass (e.g., "In Review")
+        status = item.approval_status; 
+    }
     
     // Handle views - check multiple possible fields
     const views = item.views || item.view_count || item.total_views || item.users_seen_count || item.seen_count || item.unique_view_count || 0;
@@ -76,11 +72,9 @@ const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
                 </View>
 
                 <View className="px-1 py-2.5">
-
                     <Text className="text-[14px] font-manrope-extrabold text-[#333333] mb-1" numberOfLines={1}>
                         {title}
                     </Text>
-
 
                     <View className="flex-row items-center mb-1">
                         <Ionicons name="location" size={13} color="#FF7B54" />

@@ -14,6 +14,7 @@ import {
   BottomSheetBackdrop,
 } from "@gorhom/bottom-sheet";
 import ZoomableImage from "./ZoomableImage";
+import { formatTextValue, formatReraStatus, firstValue } from "../../utils/propertyHelpers";
 
 const naksha = require("../../assets/images/building_naksha.png");
 
@@ -52,40 +53,6 @@ function AmenityItem({ label }) {
     </View>
   );
 }
-
-const firstValue = (source, keys) => {
-  for (const key of keys) {
-    const value = source?.[key];
-    if (value !== undefined && value !== null && value !== "") return value;
-  }
-  return null;
-};
-
-const formatTextValue = (value, fallback = "N/A") => {
-  if (value === undefined || value === null || value === "") return fallback;
-  return String(value)
-    .replace(/_/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-};
-
-const formatReraStatus = (value) => {
-  if (value === undefined || value === null || value === "") return "N/A";
-  if (typeof value === "boolean") return value ? "Approved" : "Not Approved";
-
-  const normalized = String(value).trim().toLowerCase().replace(/[\s-]+/g, "_");
-  if (normalized === "approved" || normalized === "yes" || normalized === "true") return "Approved";
-  if (
-    normalized === "not_approved" ||
-    normalized === "unapproved" ||
-    normalized === "no" ||
-    normalized === "false"
-  ) {
-    return "Not Approved";
-  }
-  return formatTextValue(value);
-};
 
 const normalizeAmenities = (item) => {
   const raw = firstValue(item, [
@@ -136,29 +103,19 @@ const getFollowUpStyles = (status) => {
 
 const normalizeFollowUps = (item) => {
   const raw = firstValue(item, [
-    "follow_ups",
-    "followups",
-    "followUps",
-    "admin_follow_ups",
-    "adminFollowUps",
+    "follow_ups"
   ]);
 
   if (!Array.isArray(raw)) return [];
 
   return raw.map((followUp, index) => {
     const customerName = firstValue(followUp, [
-      "customerName",
       "customer_name",
-      "client_name",
-      "lead_name",
-      "name",
+   
     ]) || "Customer";
     const salesOfficer = firstValue(followUp, [
-      "salesOfficer",
       "sales_officer",
-      "assigned_to_name",
-      "officer_name",
-      "broker_name",
+
     ]) || "Unassigned";
     const status = firstValue(followUp, ["status", "stage", "lead_status"]) || "Follow Up";
     const styles = getFollowUpStyles(status);
@@ -171,12 +128,8 @@ const normalizeFollowUps = (item) => {
       unit: firstValue(followUp, ["unit", "unit_no", "unit_number", "property_unit"]) || "Unit not set",
       customerName,
       nextEvent: firstValue(followUp, [
-        "nextEvent",
         "next_event",
-        "next_follow_up",
-        "next_followup",
-        "next_payment",
-        "event_label",
+
       ]) || "Next action not set",
       salesOfficer,
       officerInitials: firstValue(followUp, ["officerInitials", "officer_initials"]) || getInitials(salesOfficer),
@@ -238,20 +191,10 @@ export default function PropertyDetailSheet({
     if (isResidential) {
       // Check for BHK fields
       const bhkType = firstValue(item, [
-        "bhk_type",
-        "bhkType",
         "kind_of_property",
-        "kindOfProperty",
-        "bedrooms"
+      
       ]);
       
-      console.log('🏠 [PropertyDetailSheet] Residential property BHK data:', {
-        category,
-        bhkType,
-        bhk_type: item.bhk_type,
-        kind_of_property: item.kind_of_property,
-        bedrooms: item.bedrooms
-      });
       
       if (bhkType) {
         const bhkStr = String(bhkType).toLowerCase();
@@ -265,58 +208,31 @@ export default function PropertyDetailSheet({
           return num >= 5 ? "5+ BHK" : `${num} BHK`;
         }
       }
-    } else {
-      console.log('🏢 [PropertyDetailSheet] Commercial property type data:', {
-        category,
-        property_sub_type: item.property_sub_type,
-        sub_type: item.sub_type,
-        property_type: item.property_type
-      });
-    }
+    } 
     
     // For commercial or if BHK not found, show property type/subtype
     return formatTextValue(firstValue(item, [
-      "property_sub_type",
       "property_subtype",
-      "property_subtype_name",
-      "sub_type",
-      "subtype",
-      "property_type",
     ]));
   };
   
   const propertySubtype = getPropertySubtype();
   
   const reraStatus = formatReraStatus(firstValue(item, [
-    "rera_status",
-    "reraStatus",
+    "approval_status",      // Primary field - the actual approval status from DB
     "rera_approval_status",
-    "rera_approved",
-    "is_rera_approved",
-    "rea_status",
-    "reaStatus",
-    "rea_approval_status",
-    "rea_approved",
-    "is_rea_approved",
+    "rera_status",
   ]));
   const views = firstValue(item, [
     "views",
     "view_count",
-    "total_views",
-    "users_seen_count",
-    "seen_count",
-    "unique_view_count",
   ]);
   const totalArea = firstValue(item, [
     "total_area_sqft",
-    "areaSqft",
-    "total_area",
-    "area",
   ]);
 
   // Handle different price formats from API
   const getFormattedPrice = () => {
-    // Check if price exists and is a number (dummy data)
     if (item.price && typeof item.price === 'number') {
       return `₹${item.price.toLocaleString("en-IN")}/m`;
     }
