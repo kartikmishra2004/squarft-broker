@@ -106,6 +106,46 @@ export const fetchRecommendedProperties = createAsyncThunk(
     }
 );
 
+// Fetch nearby projects by map coordinates
+export const fetchNearbyProjects = createAsyncThunk(
+    'property/fetchNearbyProjects',
+    async ({ latitude, longitude, radius = 10 }, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            const queryParams = new URLSearchParams({
+                latitude: String(latitude),
+                longitude: String(longitude),
+                radius: String(radius),
+            });
+
+            const response = await fetch(`${API_BASE_URL}/api/v1/projects/nearby?${queryParams.toString()}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await response.json();
+
+            if (!response.ok) return rejectWithValue(data.message || 'Unable to fetch nearby projects');
+
+            const projects = Array.isArray(data.data)
+                ? data.data
+                : Array.isArray(data.data?.projects)
+                    ? data.data.projects
+                    : Array.isArray(data.projects)
+                        ? data.projects
+                        : [];
+            const radiusKm = Number(radius);
+
+            return projects.filter((project) => {
+                const distanceKm = Number(project.distance_km ?? project.distance);
+                return Number.isFinite(radiusKm) && Number.isFinite(distanceKm)
+                    ? distanceKm <= radiusKm
+                    : true;
+            });
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
 // Toggle save/unsave property or project
 export const toggleSaveItem = createAsyncThunk(
     'property/toggleSave',
@@ -210,10 +250,13 @@ const propertySlice = createSlice({
         similarProperties: [],
         properties: [],
         recommendedProperties: [],
+        nearbyProjects: [],
+        pickedNearbyProject: null,
         shortlistedProperties: [], // NEW: For homepage property type shortlisting
         savedItems: [],
         contactedProperties: [],
         loading: false,
+        nearbyProjectsLoading: false,
         shortlistedLoading: false, // NEW: Separate loading state for shortlisted
         error: null,
     },
@@ -226,7 +269,14 @@ const propertySlice = createSlice({
         clearProperties: (state) => {
             state.properties = [];
             state.recommendedProperties = [];
+            state.nearbyProjects = [];
             state.shortlistedProperties = [];
+        },
+        pickNearbyProject: (state, action) => {
+            state.pickedNearbyProject = action.payload;
+        },
+        clearPickedNearbyProject: (state) => {
+            state.pickedNearbyProject = null;
         },
     },
     extraReducers: (builder) => {
@@ -276,6 +326,19 @@ const propertySlice = createSlice({
             })
             .addCase(fetchRecommendedProperties.rejected, (state, action) => {
                 state.loading = false;
+                state.error = action.payload;
+            })
+            // Fetch nearby projects
+            .addCase(fetchNearbyProjects.pending, (state) => {
+                state.nearbyProjectsLoading = true;
+                state.error = null;
+            })
+            .addCase(fetchNearbyProjects.fulfilled, (state, action) => {
+                state.nearbyProjectsLoading = false;
+                state.nearbyProjects = action.payload;
+            })
+            .addCase(fetchNearbyProjects.rejected, (state, action) => {
+                state.nearbyProjectsLoading = false;
                 state.error = action.payload;
             })
             // Toggle save item
@@ -333,5 +396,5 @@ const propertySlice = createSlice({
     },
 });
 
-export const { clearCurrentProperty, clearProperties } = propertySlice.actions;
+export const { clearCurrentProperty, clearProperties, clearPickedNearbyProject, pickNearbyProject } = propertySlice.actions;
 export default propertySlice.reducer;

@@ -1,9 +1,14 @@
 import { Tabs, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
-import { Animated, Platform } from "react-native";
+import { Animated, Platform, Pressable, View  } from "react-native";
+import { Image } from "expo-image";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useDispatch } from "react-redux";
 import KycModal from "../../components/KycModal";
+import { clearCurrentItem } from "../../store/slices/myAddedSlice";
+import { resetProject } from "../../store/slices/projectSlice";
 
 const TAB_COLOR = "#4A43EC";
 const MUTED_TAB_COLOR = "#94A3B8";
@@ -52,9 +57,15 @@ function TabIcon({ name, focused }) {
 
 export default function TabsLayout() {
     const router = useRouter();
+    const dispatch = useDispatch();
     const insets = useSafeAreaInsets();
     const androidBottomInset = Platform.OS === "android" ? Math.max(insets.bottom, 0) : 0;
     const iosBottomPadding = Platform.OS === "ios" ? Math.max(insets.bottom - 8, 6) : 8;
+    const openFreshAddProject = () => {
+        dispatch(resetProject());
+        dispatch(clearCurrentItem());
+        router.replace(`/(tabs)/addProject?mode=add&itemId=&itemType=&fresh=${Date.now()}`);
+    };
 
     return (
         <>
@@ -120,19 +131,19 @@ export default function TabsLayout() {
                         headerShown: false,
                         tabBarLabel: "Add",
                         tabBarIcon: ({ focused }) => <TabIcon name="addProject" focused={focused} />,
-                        listeners: () => ({
-                            tabPress: (e) => {
-                                e.preventDefault();
-                                router.replace("/(tabs)/addProject");
-                            },
-                        }),
+                        tabBarButton: (props) => (
+                            <Pressable
+                                {...props}
+                                onPress={openFreshAddProject}
+                            />
+                        ),
                     }}
                 />
                 <Tabs.Screen
                     name="discount"
                     options={{
                         headerShown: false,
-                        tabBarLabel: "Earnings",
+                        tabBarLabel: "Commission",
                         tabBarIcon: ({ focused }) => <TabIcon name="discount" focused={focused} />,
                     }}
                 />

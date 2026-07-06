@@ -3,6 +3,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.31.27:3001';
 
+const getKycStatus = (kyc) => String(
+    kyc?.status || kyc?.kyc_status || kyc?.verification_status || kyc?.approval_status || ''
+).toLowerCase();
+
+const hasUploadedKycDocuments = (kyc) => Boolean(
+    kyc?.aadhar_front_url
+    || kyc?.aadhar_back_url
+    || kyc?.pan_card_url
+    || kyc?.profile_photo_url
+    || (Array.isArray(kyc?.documents) && kyc.documents.length > 0)
+);
+
+const isKycSubmittedOrApproved = (kyc) => {
+    if (!kyc) return false;
+
+    const status = getKycStatus(kyc);
+    if (['rejected', 'declined', 'failed'].includes(status)) return false;
+    if (['pending', 'submitted', 'approved', 'verified', 'in_review', 'under_review'].includes(status)) return true;
+
+    return hasUploadedKycDocuments(kyc);
+};
+
 // Load token from storage on app start
 export const loadToken = createAsyncThunk('auth/loadToken', async () => {
     const token = await AsyncStorage.getItem('auth_token');
@@ -235,7 +257,7 @@ const authSlice = createSlice({
         otpFlow: 'register',
         rememberMe: false,
         isLoggedIn:false,
-        isKycCompleted: true,
+        isKycCompleted: false,
         token: null,
         user: null,
         loading: false,
@@ -243,6 +265,9 @@ const authSlice = createSlice({
         otpToken: null,
         verifiedToken: null,
         kyc: null,
+        kycLoading: false,
+        kycChecked: false,
+        kycCheckFailed: false,
     },
     reducers: {
         setName: (state, action) => { state.name = action.payload; },
@@ -270,6 +295,10 @@ const authSlice = createSlice({
             state.isKycCompleted = false;
             state.token = null;
             state.user = null;
+            state.kyc = null;
+            state.kycLoading = false;
+            state.kycChecked = false;
+            state.kycCheckFailed = false;
             AsyncStorage.removeItem('auth_token');
         },
     },
@@ -279,10 +308,14 @@ const authSlice = createSlice({
             .addCase(loginUser.pending, (state) => {
                 state.loading = true;
                 state.error = null;
+                state.kyc = null;
+                state.kycChecked = false;
+                state.kycCheckFailed = false;
             })
             .addCase(loginUser.fulfilled, (state, action) => {
                 state.loading = false;
                 state.isLoggedIn = true;
+                state.isKycCompleted = false;
                 state.token = action.payload.token;
                 state.user = action.payload.user;
                 AsyncStorage.setItem('auth_token', action.payload.token);
@@ -318,12 +351,38 @@ const authSlice = createSlice({
                 if (action.payload) {
                     state.token = action.payload;
                     state.isLoggedIn = true;
+                    state.kycChecked = false;
+                    state.kycCheckFailed = false;
                 }
             })
-            .addCase(uploadKyc.fulfilled, (state) => { state.loading = false; state.isKycCompleted = true; })
+            .addCase(uploadKyc.pending, (state) => { state.loading = true; state.error = null; })
+            .addCase(uploadKyc.fulfilled, (state, action) => {
+                const uploadedKyc = action.payload?.data || action.payload;
+                state.loading = false;
+                state.kyc = uploadedKyc || state.kyc;
+                state.isKycCompleted = true;
+                state.kycChecked = true;
+            })
             .addCase(uploadKyc.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
             // Fetch KYC
-            .addCase(fetchKyc.fulfilled, (state, action) => { state.kyc = action.payload; })
+            .addCase(fetchKyc.pending, (state) => {
+                state.kycLoading = true;
+                state.kycCheckFailed = false;
+                state.error = null;
+            })
+            .addCase(fetchKyc.fulfilled, (state, action) => {
+                state.kycLoading = false;
+                state.kycChecked = true;
+                state.kycCheckFailed = false;
+                state.kyc = action.payload;
+                state.isKycCompleted = isKycSubmittedOrApproved(action.payload);
+            })
+            .addCase(fetchKyc.rejected, (state, action) => {
+                state.kycLoading = false;
+                state.kycChecked = true;
+                state.kycCheckFailed = true;
+                state.error = action.payload;
+            })
             // Fetch Profile
             .addCase(fetchUserProfile.pending, (state) => { state.loading = true; })
             .addCase(fetchUserProfile.fulfilled, (state, action) => {

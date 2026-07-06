@@ -23,6 +23,7 @@ import {
     Manrope_800ExtraBold,
 } from "@expo-google-fonts/manrope";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import PushNotificationRegistrar from "../components/PushNotificationRegistrar";
 import {
     Roboto_400Regular,
     Roboto_500Medium,
@@ -36,7 +37,7 @@ function AppInit({ children }) {
     const dispatch = useDispatch();
     useEffect(() => {
         dispatch(loadToken());
-    }, []);
+    }, [dispatch]);
     return children;
 }
 
@@ -79,6 +80,7 @@ export default function AuthLayout() {
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <BottomSheetModalProvider>
                     <AppInit>
+                        <PushNotificationRegistrar />
                         <Stack>
                             <Stack.Screen name="index" options={{ headerShown: false }} />
                             <Stack.Screen name="splash" options={{ headerShown: false, animation: "none" }} />

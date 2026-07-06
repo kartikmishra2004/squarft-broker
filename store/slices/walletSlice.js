@@ -2,6 +2,97 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.31.27:3001';
 
+const toNumber = (value, fallback = 0) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+};
+
+const normalizeTransaction = (transaction = {}) => {
+    const rawType = transaction.type || transaction.transaction_type || '';
+    const type = String(rawType).toLowerCase();
+    const propertyName = transaction.property_name || transaction.propertyName || transaction.title || '';
+    const propertyAddress = transaction.property_address || transaction.propertyAddress || transaction.location || '';
+    const transferToDetails = transaction.transfer_to_details || transaction.transferToDetails || transaction.bank_name || transaction.bank || '';
+    const createdAt = transaction.created_at || transaction.createdAt || transaction.date || null;
+    const transactionNo = transaction.transactionNo || transaction.transaction_no || transaction.id?.toString() || '';
+
+    return {
+        ...transaction,
+        amount: toNumber(transaction.amount),
+        type,
+        property_name: propertyName,
+        propertyName,
+        property_address: propertyAddress,
+        propertyAddress,
+        transfer_to_details: transferToDetails,
+        transferToDetails,
+        bank_name: transferToDetails,
+        bank: transferToDetails || 'N/A',
+        created_at: createdAt,
+        createdAt,
+        title: propertyName || (type === 'credit' ? 'Commission' : 'Withdrawal'),
+        location: propertyAddress || (type === 'credit' ? 'Earned from property sale' : 'Withdrawal to bank'),
+        transactionNo,
+    };
+};
+
+const normalizeTransactionList = (transactions = []) =>
+    Array.isArray(transactions) ? transactions.map(normalizeTransaction) : [];
+
+const normalizeOverview = (overview = {}) => ({
+    balance: toNumber(overview.balance ?? overview.mainBalance ?? overview.main_balance),
+    totalEarned: toNumber(overview.totalEarned ?? overview.total_earned),
+    totalWithdrawn: toNumber(overview.totalWithdrawn ?? overview.total_withdrawn),
+    recentTransactions: normalizeTransactionList(overview.recentTransactions ?? overview.recent_transactions),
+});
+
+const normalizeTransactionPayload = (payload = {}) => ({
+    count: toNumber(payload.count),
+    page: toNumber(payload.page, 1),
+    transactions: normalizeTransactionList(payload.transactions),
+});
+
+const normalizeCommission = (commission = {}) => {
+    const propertyName = commission.propertyName || commission.property_name || '';
+    const propertyAddress = commission.propertyAddress || commission.property_address || '';
+    const transferToDetails = commission.transferToDetails || commission.transfer_to_details || '';
+    const createdAt = commission.createdAt || commission.created_at || null;
+
+    return {
+        ...commission,
+        amount: toNumber(commission.amount),
+        propertyName,
+        property_name: propertyName,
+        propertyAddress,
+        property_address: propertyAddress,
+        transferToDetails,
+        transfer_to_details: transferToDetails,
+        createdAt,
+        created_at: createdAt,
+        type: commission.type || 'credit',
+        status: commission.status || 'CREDIT',
+    };
+};
+
+const normalizeCommissionPayload = (payload = {}) => ({
+    count: toNumber(payload.count),
+    page: toNumber(payload.page, 1),
+    commissions: Array.isArray(payload.transactions)
+        ? payload.transactions.map(normalizeCommission)
+        : [],
+});
+
+const normalizeBankAccount = (account = {}) => ({
+    ...account,
+    bankName: account.bankName || account.bank_name || '',
+    accountNumberMasked: account.accountNumberMasked || account.account_number_masked || '',
+    ifscCode: account.ifscCode || account.ifsc_code || '',
+    isDefault: Boolean(account.isDefault ?? account.is_default),
+});
+
+const normalizeBankAccounts = (accounts = []) =>
+    Array.isArray(accounts) ? accounts.map(normalizeBankAccount) : [];
+
 // Async Thunks
 export const fetchWalletOverview = createAsyncThunk(
     'wallet/fetchWalletOverview',
@@ -13,7 +104,7 @@ export const fetchWalletOverview = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data; // returns { balance, totalEarned, totalWithdrawn }
+            return normalizeOverview(data.data);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -30,7 +121,7 @@ export const fetchTransactions = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data;
+            return normalizeTransactionPayload(data.data);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -42,13 +133,52 @@ export const fetchCommissionHistory = createAsyncThunk(
     async ({ page = 1, limit = 10 } = {}, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
-            const response = await fetch(`${API_BASE_URL}/api/v1/broker/wallet/commissionHistory?page=${page}&limit=${limit}`, {
+            console.log('💰 [walletSlice] Fetching commission history with token:', token ? 'present' : 'missing');
+            
+            const params = new URLSearchParams({
+                page: String(page),
+                limit: String(limit),
+            });
+            // FIX: Changed from commissionHistory to commission-history (matches backend route)
+            const url = `${API_BASE_URL}/api/v1/broker/wallet/commission-history?${params.toString()}`;
+            console.log('💰 [walletSlice] Request URL:', url);
+            
+            const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
+            
+            console.log('💰 [walletSlice] Response status:', response.status);
+            
             const data = await response.json();
-            if (!response.ok) return rejectWithValue(data.message);
-            return data.data;
+            console.log('💰 [walletSlice] Response data:', JSON.stringify(data, null, 2));
+            
+            if (!response.ok) return rejectWithValue(data.message || 'Failed to fetch commission history');
+            
+            // FIX: Backend now returns data.commissions directly (not data.transactions)
+            const normalized = {
+                count: data.data?.pagination?.total || 0,
+                page: data.data?.pagination?.page || 1,
+                commissions: Array.isArray(data.data?.commissions) 
+                    ? data.data.commissions.map(commission => ({
+                        ...commission,
+                        amount: Number(commission.commissionAmount || 0),
+                        propertyName: commission.propertyName || '',
+                        property_name: commission.propertyName || '',
+                        propertyAddress: commission.propertyAddress || '',
+                        property_address: commission.propertyAddress || '',
+                        createdAt: commission.date || null,
+                        created_at: commission.date || null,
+                        type: 'credit',
+                        // Backend returns "Paid" or "Pending", keep as is
+                        status: commission.status || 'Pending',
+                    }))
+                    : [],
+            };
+            console.log('💰 [walletSlice] Normalized data:', JSON.stringify(normalized, null, 2));
+            
+            return normalized;
         } catch (err) {
+            console.error('❌ [walletSlice] Error fetching commission history:', err);
             return rejectWithValue(err.message);
         }
     }
@@ -64,7 +194,7 @@ export const fetchBankAccounts = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data;
+            return normalizeBankAccounts(data.data);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -86,7 +216,7 @@ export const addBankAccountApi = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.bankAccount;
+            return normalizeBankAccount(data.bankAccount);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -108,7 +238,10 @@ export const requestWithdrawalApi = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return data.data;
+            return {
+                ...data.data,
+                newBalance: toNumber(data.data?.newBalance),
+            };
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -127,7 +260,9 @@ const walletSlice = createSlice({
         loading: false,
         error: null,
         transactionCount: 0,
+        commissionCount: 0,
         currentPage: 1,
+        currentCommissionPage: 1,
     },
     reducers: {
         clearWalletError: (state) => {
@@ -145,6 +280,9 @@ const walletSlice = createSlice({
                 state.balance = action.payload.balance;
                 state.totalEarned = action.payload.totalEarned;
                 state.totalWithdrawn = action.payload.totalWithdrawn;
+                if (action.payload.recentTransactions.length > 0 && state.transactions.length === 0) {
+                    state.transactions = action.payload.recentTransactions;
+                }
             })
             .addCase(fetchWalletOverview.rejected, (state, action) => {
                 state.loading = false;
@@ -166,15 +304,18 @@ const walletSlice = createSlice({
             })
             // Withdrawal
             .addCase(requestWithdrawalApi.fulfilled, (state, action) => {
-                state.balance -= action.payload.amount;
+                state.balance = action.payload.newBalance;
             })
             // Commission History
             .addCase(fetchCommissionHistory.pending, (state) => {
                 state.loading = true;
+                state.error = null;
             })
             .addCase(fetchCommissionHistory.fulfilled, (state, action) => {
                 state.loading = false;
-                state.commissions = action.payload?.transactions || [];
+                state.commissions = action.payload.commissions;
+                state.commissionCount = action.payload.count;
+                state.currentCommissionPage = action.payload.page;
             })
             .addCase(fetchCommissionHistory.rejected, (state, action) => {
                 state.loading = false;

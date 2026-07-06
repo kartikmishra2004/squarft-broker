@@ -7,8 +7,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import * as ImagePicker from "expo-image-picker";
-import { uploadKyc, fetchKyc } from "../../store/slices/authSlice";
-import { setKycCompleted } from "../../store/slices/authSlice";
+import { fetchKyc, setKycCompleted, uploadKyc } from "../../store/slices/authSlice";
+import { notifyKycDocumentUploaded, notifyKycSubmitted } from "../../utils/notificationHelpers";
 
 const DOCS = [
     { key: "aadharFront",  label: "Upload Adhar Card Front View", isCamera: false },
@@ -36,19 +36,39 @@ export default function MyDocuments() {
     }, [dispatch]);
 
     const pickImage = async (key, isCamera) => {
-        let result;
-        if (isCamera) {
-            const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Permission needed', 'Camera permission is required.');
-                return;
+        try {
+            let result;
+            if (isCamera) {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== 'granted') {
+                    Alert.alert('Permission needed', 'Camera permission is required.');
+                    return;
+                }
+                result = await ImagePicker.launchCameraAsync({
+                    allowsEditing: true,
+                    aspect: [4, 3],
+                    quality: 0.8,
+                    mediaTypes: 'images',
+                });
+            } else {
+                result = await ImagePicker.launchImageLibraryAsync({
+                    allowsEditing: true,
+                    aspect: [4, 3],
+                    quality: 0.8,
+                    mediaTypes: 'images',
+                });
             }
-            result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 });
-        } else {
-            result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 });
-        }
-        if (!result.canceled) {
-            setFiles(prev => ({ ...prev, [key]: result.assets[0] }));
+            if (!result.canceled && result.assets && result.assets[0]) {
+                setFiles(prev => ({ ...prev, [key]: result.assets[0] }));
+                await notifyKycDocumentUploaded({ documentType: key });
+            }
+        } catch (error) {
+            console.error('[MyDocs] Image picker error:', error);
+            Alert.alert(
+                'Image Picker Error',
+                'Unable to access image picker. Please try restarting the app or check app permissions in Settings.',
+                [{ text: 'OK' }]
+            );
         }
     };
 
@@ -80,7 +100,10 @@ export default function MyDocuments() {
             // Mark KYC as completed regardless of upload success
             dispatch(setKycCompleted(true));
             await dispatch(fetchKyc());
-            
+
+            // Trigger KYC submitted notification
+            await notifyKycSubmitted();
+
             Alert.alert("Documents Uploaded Successfully", "Wait for document approval.", [
                 { text: "OK", onPress: () => router.replace('/(tabs)/home') }
             ]);
@@ -157,12 +180,12 @@ export default function MyDocuments() {
                                 // Already uploaded — show existing with replace option
                                 <View>
                                     <View style={styles.fileBar}>
-                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
                                             <Ionicons name="checkmark-circle" size={16} color="#4A43EC" />
                                             <Text style={[styles.fileName, { color: "#4A43EC" }]}>Previously uploaded</Text>
                                         </View>
-                                        <Pressable onPress={() => pickImage(key, isCamera)}>
-                                            <Text style={{ fontSize: 12, fontFamily: "Manrope-Bold", color: "#4A43EC" }}>Replace</Text>
+                                        <Pressable onPress={() => pickImage(key, isCamera)} style={{ marginLeft: 12 }}>
+                                            <Text style={{ fontSize: 12, fontFamily: "Manrope-Bold", color: "#4A43EC" }}>Reupload</Text>
                                         </Pressable>
                                     </View>
                                     <View style={{ borderRadius: 12, overflow: "hidden", marginTop: 8 }}>
@@ -196,7 +219,9 @@ export default function MyDocuments() {
                 >
                     {loading
                         ? <ActivityIndicator color="white" />
-                        : <Text style={styles.saveBtnText}>Save Documents</Text>
+                        : <Text style={styles.saveBtnText}>
+                            {Object.values(existingUrls).some(Boolean) ? "Update Documents" : "Save Documents"}
+                        </Text>
                     }
                 </Pressable>
 

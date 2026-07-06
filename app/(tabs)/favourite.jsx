@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { fetchMyAddedProperties, deleteProject, deleteProperty, fetchProjectDetails, fetchPropertyDetails } from "../../store/slices/myAddedSlice";
 import PropertyDetailSheet from "../../components/property/PropertyDetailSheet";
@@ -80,11 +80,28 @@ function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
     // Total area - use total_area_sqft field, not 'area' (which is locality name)
     const totalArea = item.total_area_sqft || item.total_area;
 
+    const handleEdit = () => {
+        console.log('✏️ [PropertyCard] Edit button pressed for item:', item.id);
+        setMenuOpen(false);
+        onEditPress?.(item);
+    };
+
+    const handleDelete = () => {
+        console.log('🗑️ [PropertyCard] Delete button pressed for item:', item.id);
+        setMenuOpen(false);
+        onDeletePress?.(item.id);
+    };
+
+    const toggleMenu = () => {
+        console.log('🔘 [PropertyCard] Toggling menu, current:', menuOpen);
+        setMenuOpen(prev => !prev);
+    };
+
     return (
         <TouchableOpacity 
             activeOpacity={0.7}
-            onPress={() => onPress?.(item)}
-            className="flex-row bg-white border border-[#E5E7EB] rounded-[20px] mb-4 p-3 items-start" 
+            onPress={() => !menuOpen && onPress?.(item)}
+            className="flex-row bg-white border border-[#E5E7EB] rounded-[20px] mb-4 p-3 items-start"
         >
             {coverImage ? (
                 <Image 
@@ -130,23 +147,42 @@ function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
 
             {/* 3-dot menu */}
             <View className="items-end">
-                <TouchableOpacity className="p-1" onPress={() => setMenuOpen((v) => !v)}>
+                <TouchableOpacity 
+                    className="p-2.5" 
+                    onPress={toggleMenu}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    activeOpacity={0.6}
+                >
                     <Feather name="more-vertical" size={18} color="#333" />
                 </TouchableOpacity>
                 {menuOpen && (
-                    <View className="absolute top-7 right-0 bg-[#4F46E5] rounded-xl overflow-hidden z-10" style={{ elevation: 8, minWidth: 120 }}>
+                    <View 
+                        className="absolute top-10 right-0 bg-[#4F46E5] rounded-xl overflow-hidden shadow-2xl" 
+                        style={{ 
+                            elevation: 30, 
+                            minWidth: 130,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 10 },
+                            shadowOpacity: 0.5,
+                            shadowRadius: 15,
+                        }}
+                    >
                         <TouchableOpacity
-                            className="flex-row items-center gap-2.5 px-4 py-3 border-b border-[#6B63F0]"
-                            onPress={() => { setMenuOpen(false); onEditPress?.(item); }}
+                            className="flex-row items-center gap-2.5 px-4 py-3.5 border-b border-[#6B63F0]"
+                            onPress={handleEdit}
+                            activeOpacity={0.6}
+                            style={{ backgroundColor: '#4F46E5' }}
                         >
-                            <Feather name="edit-2" size={15} color="#fff" />
+                            <Feather name="edit-2" size={16} color="#fff" />
                             <Text className="text-white text-[14px] font-roboto-medium">Edit</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            className="flex-row items-center gap-2.5 px-4 py-3"
-                            onPress={() => { setMenuOpen(false); onDeletePress(item.id); }}
+                            className="flex-row items-center gap-2.5 px-4 py-3.5"
+                            onPress={handleDelete}
+                            activeOpacity={0.6}
+                            style={{ backgroundColor: '#4F46E5' }}
                         >
-                            <Feather name="trash-2" size={15} color="#fff" />
+                            <Feather name="trash-2" size={16} color="#fff" />
                             <Text className="text-white text-[14px] font-roboto-medium">Delete</Text>
                         </TouchableOpacity>
                     </View>
@@ -167,9 +203,12 @@ export default function Favourite() {
     const [deleteId, setDeleteId] = useState(null);
     const [selectedProperty, setSelectedProperty] = useState(null);
     const [propertySheetVisible, setPropertySheetVisible] = useState(false);
+    const [propertyDetailLoading, setPropertyDetailLoading] = useState(false);
+    const [propertyDetailError, setPropertyDetailError] = useState(null);
     const [deleting, setDeleting] = useState(false);
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [activeFilters, setActiveFilters] = useState(null);
+    const detailRequestRef = useRef(0);
 
     // Fetch properties on mount (no filters initially)
     useEffect(() => {
@@ -212,20 +251,25 @@ export default function Favourite() {
     };
 
     const handleConfirmDelete = async () => {
+        console.log('🗑️ [favourite.jsx] handleConfirmDelete called with deleteId:', deleteId);
         setDeleting(true);
         try {
             // Check if it's a property or project based on item_type field
             const itemToDelete = properties.find(item => item.id === deleteId);
+            console.log('🔍 [favourite.jsx] Item to delete:', itemToDelete);
             const isProperty = itemToDelete?.item_type === 'property';
+            
+            console.log('📝 [favourite.jsx] Deleting as:', isProperty ? 'property' : 'project');
             
             if (isProperty) {
                 await dispatch(deleteProperty(deleteId)).unwrap();
             } else {
                 await dispatch(deleteProject(deleteId)).unwrap();
             }
+            console.log('✅ [favourite.jsx] Delete successful');
             setDeleteId(null);
         } catch (error) {
-            console.error('Delete failed:', error);
+            console.error('❌ [favourite.jsx] Delete failed:', error);
             alert('Failed to delete. Please try again.');
         } finally {
             setDeleting(false);
@@ -233,8 +277,11 @@ export default function Favourite() {
     };
 
     const handleEditPress = (item) => {
+        console.log('✏️ [favourite.jsx] handleEditPress called with item:', item);
         // Check if it's a property or project
         const isProperty = item?.item_type === 'property';
+        
+        console.log('📝 [favourite.jsx] Editing as:', isProperty ? 'property' : 'project');
         
         // Fetch details and navigate to edit form
         const fetchAction = isProperty ? fetchPropertyDetails : fetchProjectDetails;
@@ -242,15 +289,59 @@ export default function Favourite() {
         dispatch(fetchAction(item.id))
             .unwrap()
             .then(() => {
+                console.log('✅ [favourite.jsx] Details fetched, navigating to edit form');
                 router.push({
                     pathname: '/(tabs)/addProject',
                     params: { itemId: item.id, mode: 'edit', itemType: isProperty ? 'property' : 'project' }
                 });
             })
             .catch((error) => {
+                console.error('❌ [favourite.jsx] Failed to load details:', error);
                 Alert.alert('Error', `Failed to load details: ${error}`);
             });
     };
+
+    const handlePropertyPress = useCallback((item) => {
+        if (!item?.id) return;
+
+        const requestId = detailRequestRef.current + 1;
+        detailRequestRef.current = requestId;
+        const isProperty = item?.item_type === 'property';
+        const fetchAction = isProperty ? fetchPropertyDetails : fetchProjectDetails;
+
+        setSelectedProperty(item);
+        setPropertySheetVisible(true);
+        setPropertyDetailLoading(true);
+        setPropertyDetailError(null);
+
+        dispatch(fetchAction(item.id))
+            .unwrap()
+            .then((details) => {
+                if (detailRequestRef.current !== requestId) return;
+                setSelectedProperty({
+                    ...item,
+                    ...details,
+                    item_type: details?.item_type || item.item_type,
+                });
+            })
+            .catch((error) => {
+                if (detailRequestRef.current !== requestId) return;
+                const message = typeof error === 'string' ? error : error?.message || 'Failed to load property details';
+                setPropertyDetailError(message);
+            })
+            .finally(() => {
+                if (detailRequestRef.current === requestId) {
+                    setPropertyDetailLoading(false);
+                }
+            });
+    }, [dispatch]);
+
+    const handleClosePropertySheet = useCallback(() => {
+        detailRequestRef.current += 1;
+        setPropertySheetVisible(false);
+        setPropertyDetailLoading(false);
+        setPropertyDetailError(null);
+    }, []);
 
     if (loading && properties.length === 0) {
         return (
@@ -324,10 +415,7 @@ export default function Favourite() {
                             item={item} 
                             onDeletePress={setDeleteId}
                             onEditPress={handleEditPress}
-                            onPress={(prop) => {
-                                setSelectedProperty(prop);
-                                setPropertySheetVisible(true);
-                            }} 
+                            onPress={handlePropertyPress}
                         />
                     )}
                     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 150, paddingTop: 10 }}
@@ -369,7 +457,9 @@ export default function Favourite() {
             <PropertyDetailSheet 
                 visible={propertySheetVisible}
                 item={selectedProperty}
-                onClose={() => setPropertySheetVisible(false)}
+                loading={propertyDetailLoading}
+                error={propertyDetailError}
+                onClose={handleClosePropertySheet}
             />
 
             <FilterModal 

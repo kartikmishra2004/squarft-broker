@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { createRequirement, updateRequirementApi, setContactVerified } from "../../store/slices/requirementsSlice";
 import { ActivityIndicator } from "react-native";
+import { notifyClientSubmitted } from "../../utils/notificationHelpers";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -282,10 +283,19 @@ export default function AddCustomerRequirement() {
       if (isEdit) {
         await dispatch(updateRequirementApi({ id, payload })).unwrap();
       } else {
-        await dispatch(createRequirement(payload)).unwrap();
+        const result = await dispatch(createRequirement(payload)).unwrap();
+        
+        // ✅ Event #12: Trigger notification after client submission
+        console.log('📋 [AddCustomerRequirement] Client submitted successfully, triggering notification');
+        await notifyClientSubmitted({
+          clientId: result.id,
+          clientReference: result.customer_name || form.name,
+        });
+        console.log('✅ [AddCustomerRequirement] Client submission notification sent');
       }
       router.back();
     } catch (err) {
+      console.error('❌ [AddCustomerRequirement] Submission error:', err);
       alert(err || "Something went wrong");
     } finally {
       setIsSubmitting(false);

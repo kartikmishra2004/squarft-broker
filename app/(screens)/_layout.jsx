@@ -10,7 +10,10 @@ export default function ScreensLayout() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="wallet" />
       <Stack.Screen name="transactions" />
+      <Stack.Screen name="commission-history" />
       <Stack.Screen name="add-bank" />
+      <Stack.Screen name="location-picker" />
+      <Stack.Screen name="nearby-projects" />
       <Stack.Screen name="bank-success" options={{ gestureEnabled: false }} />
     </Stack>
   );

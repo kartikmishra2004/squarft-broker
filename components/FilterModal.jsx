@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, Dimensions, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import RangeSliderLib from 'react-native-fast-range-slider';
+import PremiumRangeSlider from './PremiumRangeSlider';
 
 const { width } = Dimensions.get('window');
 
@@ -9,36 +9,6 @@ function formatBudget(val) {
     if (val >= 10000000) return `₹${(val / 10000000).toFixed(0)}Cr`;
     if (val >= 100000) return `₹${(val / 100000).toFixed(0)}L`;
     return `₹${val}`;
-}
-
-function RangeSlider({ min, max, values, onChange, onLiveChange }) {
-    const { width } = useWindowDimensions();
-    return (
-        <RangeSliderLib
-            key={`${values[0]}-${values[1]}`}
-            min={min}
-            max={max}
-            initialMinValue={values[0]}
-            initialMaxValue={values[1]}
-            width={width - 64}
-            trackHeight={4}
-            thumbSize={24}
-            showThumbLines={false}
-            selectedTrackColor="#4A43EC"
-            unselectedTrackStyle={{ backgroundColor: '#E5E7EB' }}
-            thumbStyle={{
-                backgroundColor: '#4A43EC',
-                borderWidth: 3,
-                borderColor: '#fff',
-                shadowColor: '#4A43EC',
-                shadowOpacity: 0.4,
-                shadowRadius: 4,
-                elevation: 4,
-            }}
-            onValuesChange={(vals) => onLiveChange?.([vals[0], vals[1]])}
-            onValuesChangeFinish={(vals) => onChange([vals[0], vals[1]])}
-        />
-    );
 }
 
 const mainTypes = [
@@ -123,8 +93,6 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
     const subTypes = selectedMainType ? (subTypesData[selectedMainType] || []) : [];
     const showBhk = selectedMainType === "residential" && selectedSubTypes.length > 0 && selectedSubTypes.some(type => bhkSubTypes.includes(type));
 
-    const budgetLabel = `${formatBudget(liveBudget[0])} - ${formatBudget(liveBudget[1])}${liveBudget[1] >= BUDGET_MAX ? '+' : ''}`;
-
     const toggleSubType = (id) => {
         setSelectedSubTypes(prev => 
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
@@ -171,14 +139,14 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
             enablePanDownToClose={true}
             handleIndicatorStyle={{ backgroundColor: '#D1D5DB', width: 40 }}
         >
-            {/* ✅ FIXED: Changed layout element container into a clean flex column alignment base */}
+            {/* FIXED: Changed layout element container into a clean flex column alignment base */}
             <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
                 {/* Header */}
                 <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
                     <Text style={{ fontSize: 20, fontWeight: '700', color: '#1F2937' }}>Filter</Text>
                 </View>
 
-                {/* ✅ FIXED: Content scrolls dynamically within layout viewport window boundaries */}
+                {/* FIXED: Content scrolls dynamically within layout viewport window boundaries */}
                 <BottomSheetScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
                     {/* Category Selection */}
                     <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
@@ -199,6 +167,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
                                         alignItems: 'center',
                                         backgroundColor: selectedMainType === type.id ? '#F5F3FF' : '#FFFFFF',
                                     }}
+                                // Added follow-up logic checklist for state binding parameters
                                 >
                                     <View style={{ position: 'relative', width: 60, height: 60, marginBottom: 8 }}>
                                         <Image
@@ -217,7 +186,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
                                     <Text style={{
                                         fontSize: 14,
                                         fontWeight: '600',
-                                        color: selectedMainType === type.id ? '#7C3AED' : '#6B7280',
+                                        color: '#selectedMainType' === type.id ? '#7C3AED' : '#6B7280',
                                     }}>
                                         {type.label}
                                     </Text>
@@ -300,24 +269,20 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
 
                     {/* Budget Range Slider */}
                     <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                            <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937' }}>
-                                Budget Range
-                            </Text>
-                            <Text style={{ fontSize: 13, color: '#4A43EC', fontWeight: '500' }}>
-                                {budgetLabel}
-                            </Text>
-                        </View>
-                        <View style={{ paddingTop: 20, paddingBottom: 10 }}>
-                            <RangeSlider
-                                min={BUDGET_MIN}
-                                max={BUDGET_MAX}
-                                values={liveBudget}
-                                onChange={(v) => setLiveBudget(v)}
-                                onLiveChange={setLiveBudget}
-                            />
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 20 }}>
+                            Budget Range
+                        </Text>
+                        {/* PERFORMANCE FIX: Isolated rendering updates to prevent layout stutter */}
+                        <PremiumRangeSlider
+                            min={BUDGET_MIN}
+                            max={BUDGET_MAX}
+                            initialMin={liveBudget[0]}
+                            initialMax={liveBudget[1]}
+                            step={100000}
+                            onValuesChangeFinish={(values) => setLiveBudget(values)}
+                            formatLabel={formatBudget}
+                        />
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
                             {['20L', '1Cr', '2Cr', '3Cr', '5Cr+'].map((l) => (
                                 <Text key={l} style={{ fontSize: 11, color: '#9CA3AF' }}>{l}</Text>
                             ))}
@@ -326,7 +291,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
                 </BottomSheetScrollView>
 
                 {/* Footer Buttons */}
-                {/* ✅ FIXED: Removed absolute tracking layout to allow buttons to sit naturally under the scroll area */}
+                {/* FIXED: Removed absolute tracking layout to allow buttons to sit naturally under the scroll area */}
                 <View style={{
                     backgroundColor: '#FFFFFF',
                     borderTopWidth: 1,

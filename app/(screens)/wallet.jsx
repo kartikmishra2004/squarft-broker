@@ -5,12 +5,13 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { fetchWalletOverview, fetchBankAccounts, fetchTransactions, requestWithdrawalApi } from '../../store/slices/walletSlice';
+import { notifyWithdrawalRequested } from '../../utils/notificationHelpers';
 
 const WalletScreen = () => {
     const router = useRouter();
     const { withdraw } = useLocalSearchParams();
     const dispatch = useDispatch();
-    const { balance, bankAccounts, transactions, loading } = useSelector((state) => state.wallet);
+    const { balance, bankAccounts, transactions } = useSelector((state) => state.wallet);
     
     // States for view toggle and withdraw form
     const [isWithdrawMode, setIsWithdrawMode] = useState(false);
@@ -59,7 +60,13 @@ const WalletScreen = () => {
         }
 
         try {
-            await dispatch(requestWithdrawalApi({ requestedAmount: amount, bankAccountId: selectedBankId })).unwrap();
+            const requestedAmount = amount;
+            const result = await dispatch(requestWithdrawalApi({ requestedAmount, bankAccountId: selectedBankId })).unwrap();
+            await notifyWithdrawalRequested({
+                withdrawalAmount: requestedAmount,
+                withdrawalId: result.withdrawalId || result.transactionId,
+                requestedAt: new Date().toISOString(),
+            });
             setAmount('');
             setIsWithdrawMode(false);
             Alert.alert("Success", `₹${amount} withdrawal initiated successfully`);
@@ -266,9 +273,6 @@ const WalletScreen = () => {
                 <BottomSheetView className="flex-1 px-6 pt-5">
                     <View className="flex-row items-center justify-between mb-1">
                         <Text className="text-[15px] font-manrope-extrabold text-[#272727]">{selectedTransaction?.property_name || 'Commission'}</Text>
-                        <Pressable onPress={() => bottomSheetModalRef.current?.dismiss()}>
-                            <Text className="text-[#FF4B4B] font-manrope-bold text-[12px]">Cancel</Text>
-                        </Pressable>
                     </View>
                     <Text className="text-gray-400 font-manrope-medium mb-5 text-[11px]">{selectedTransaction?.type === 'credit' ? 'Earned from property sale' : 'Withdrawal to bank'}</Text>
 

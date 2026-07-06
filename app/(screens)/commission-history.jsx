@@ -1,27 +1,95 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, StatusBar, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, ScrollView, StatusBar, TextInput, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchCommissionHistory } from '../../store/slices/walletSlice';
+import CommissionFilterModal from '../../components/CommissionFilterModal';
 
 const CommissionHistoryScreen = () => {
     const router = useRouter();
     const dispatch = useDispatch();
-    const { commissions, loading } = useSelector((state) => state.wallet);
+    const { commissions, loading, error } = useSelector((state) => state.wallet);
     const [searchText, setSearchText] = useState('');
+    const [filterModalVisible, setFilterModalVisible] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [dateFilter, setDateFilter] = useState('all');
 
     useEffect(() => {
+        console.log('🔍 [commission-history] Fetching commission history...');
         dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
     }, [dispatch]);
 
+    // Add debug logging for commission data
+    useEffect(() => {
+        console.log('💰 [commission-history] Commissions state:', commissions);
+        console.log('💰 [commission-history] Commissions length:', Array.isArray(commissions) ? commissions.length : 'not an array');
+        console.log('💰 [commission-history] Loading:', loading);
+        console.log('💰 [commission-history] Error:', error);
+    }, [commissions, loading, error]);
+
+    const hasActiveFilters = statusFilter !== 'all' || dateFilter !== 'all';
+
     const filtered = useMemo(() => {
-        if (!searchText || !Array.isArray(commissions)) return commissions || [];
-        return commissions.filter(item =>
-            (item.propertyName || '').toLowerCase().includes(searchText.toLowerCase()) ||
-            (item.amount?.toString() || '').includes(searchText)
-        );
-    }, [searchText, commissions]);
+        if (!Array.isArray(commissions)) return [];
+        
+        let result = [...commissions];
+
+        // Search filter
+        if (searchText) {
+            result = result.filter(item =>
+                (item.propertyName || '').toLowerCase().includes(searchText.toLowerCase()) ||
+                (item.propertyAddress || '').toLowerCase().includes(searchText.toLowerCase()) ||
+                (item.amount?.toString() || '').includes(searchText)
+            );
+        }
+
+        // Status filter
+        if (statusFilter !== 'all') {
+            result = result.filter(item => {
+                const itemStatus = (item.status || 'credit').toLowerCase();
+                // Map 'paid' filter to 'credit' status in data
+                if (statusFilter === 'paid') {
+                    return itemStatus === 'credit' || itemStatus === 'paid' || itemStatus === 'completed';
+                }
+                return itemStatus === statusFilter.toLowerCase();
+            });
+        }
+
+        // Date filter
+        if (dateFilter !== 'all') {
+            const now = new Date();
+            const cutoffDate = new Date();
+            
+            if (dateFilter === 'month') {
+                cutoffDate.setMonth(now.getMonth() - 1);
+            } else if (dateFilter === '3months') {
+                cutoffDate.setMonth(now.getMonth() - 3);
+            } else if (dateFilter === '6months') {
+                cutoffDate.setMonth(now.getMonth() - 6);
+            }
+            
+            result = result.filter(item => {
+                if (!item.createdAt) return false;
+                const itemDate = new Date(item.createdAt);
+                return itemDate >= cutoffDate;
+            });
+        }
+
+        return result;
+    }, [searchText, commissions, statusFilter, dateFilter]);
+
+    const handleOpenFilter = () => {
+        console.log('🎯🎯🎯 FILTER BUTTON PRESSED - Opening modal!');
+        setFilterModalVisible(true);
+    };
+
+    const handleApplyFilters = (filters) => {
+        console.log('📊 [commission-history] Filters applied:', filters);
+        setStatusFilter(filters.status);
+        setDateFilter(filters.dateFilter);
+        setFilterModalVisible(false);
+    };
 
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
@@ -31,7 +99,7 @@ const CommissionHistoryScreen = () => {
     };
 
     const formatAmount = (amount) =>
-        `₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        `\u20B9${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
     return (
         <View className="flex-1 bg-white">
@@ -47,8 +115,8 @@ const CommissionHistoryScreen = () => {
             </View>
 
             {/* Search */}
-            <View className="px-6 mt-4 mb-2">
-                <View className="flex-row items-center bg-[#EBF1FF] rounded-xl px-3.5 h-[44px]">
+            <View className="flex-row px-6 mt-4 mb-4 gap-2.5">
+                <View className="flex-1 flex-row items-center bg-[#EBF1FF] rounded-xl px-3.5 h-[44px]">
                     <Ionicons name="search" size={18} color="#9CA3AF" />
                     <TextInput
                         placeholder="Search by property or amount"
@@ -58,11 +126,46 @@ const CommissionHistoryScreen = () => {
                         className="flex-1 text-[13px] text-black ml-2 font-lato-regular"
                     />
                 </View>
+                <TouchableOpacity 
+                    className="w-[44px] h-[44px] bg-[#EBF1FF] rounded-xl items-center justify-center relative"
+                    onPress={() => {
+                        console.log('🎯🎯🎯 FILTER BUTTON PRESSED!');
+                        handleOpenFilter();
+                    }}
+                    activeOpacity={0.7}
+                >
+                    <MaterialCommunityIcons name="filter-variant" size={22} color="#4A43EC" />
+                    {hasActiveFilters && (
+                        <View className="absolute top-1 right-1 w-2 h-2 bg-[#FF3B30] rounded-full" />
+                    )}
+                </TouchableOpacity>
             </View>
+
+            {/* Filter Modal */}
+            <CommissionFilterModal
+                visible={filterModalVisible}
+                onClose={() => setFilterModalVisible(false)}
+                onApplyFilters={handleApplyFilters}
+                initialStatus={statusFilter}
+                initialDateFilter={dateFilter}
+            />
 
             {loading ? (
                 <View className="flex-1 items-center justify-center">
                     <ActivityIndicator size="large" color="#4A43EC" />
+                </View>
+            ) : error ? (
+                <View className="flex-1 items-center justify-center px-10">
+                    <MaterialCommunityIcons name="cash-remove" size={56} color="#D1D5DB" />
+                    <Text className="text-gray-400 text-[14px] font-manrope-medium mt-4 text-center">
+                        {error}
+                    </Text>
+                    <Pressable
+                        onPress={() => dispatch(fetchCommissionHistory({ page: 1, limit: 100 }))}
+                        className="bg-[#4A43EC] px-5 py-3 rounded-xl mt-5"
+                    >
+                        <Text className="text-white text-[12px] font-manrope-bold">Retry</Text>
+                    </Pressable>
                 </View>
             ) : filtered.length === 0 ? (
                 <View className="flex-1 items-center justify-center px-10">

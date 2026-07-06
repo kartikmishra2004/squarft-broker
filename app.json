@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Allow squarFT Broker to use your location for selecting property and owner addresses."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +21,17 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.kartik2611mishra.squarftbroker",
-      "softwareKeyboardLayoutMode": "pan"
+      "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDiYnY4FG1juihWvHEgM-NSz2aEKUsKing"
+        }
+      }
     },
     "androidNavigationBar": {
       "backgroundColor": "#ffffff",
@@ -32,6 +45,12 @@
     "plugins": [
       "expo-router",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow squarFT Broker to use your location for selecting property and owner addresses."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/icons/icon.png",
@@ -44,8 +63,25 @@
         }
       ],
       "expo-asset",
-      "expo-video"
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icons/icon.png",
+          "color": "#4A43EC",
+          "defaultChannel": "broker_app_default"
+        }
+      ]
     ],
+    "extra": {
+      "pushNotifications": {
+        "appKey": "broker_app",
+        "androidChannelId": "broker_app_default"
+      },
+      "router": {},
+      "eas": {
+        "projectId": "da50829c-a64a-48ac-92d9-799acc8f8a94"
+      }
+    },
     "splash": {
       "image": "./assets/icons/icon.png",
       "resizeMode": "cover",
@@ -58,6 +94,7 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "owner": "untidybloom"
   }
 }

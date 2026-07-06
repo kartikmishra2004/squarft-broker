@@ -5,6 +5,7 @@ import React, { useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setOtpDigit, clearOtp, loginUser, verifyOtpApi, registerUser, clearError, sendOtpApi } from "../../store/slices/authSlice";
 import { ActivityIndicator } from "react-native";
+import { notifyRegistrationOtpSent } from "../../utils/notificationHelpers";
 
 const logo = require("../../assets/icons/app-icon.png");
 
@@ -68,6 +69,10 @@ export default function OtpVerification() {
             await dispatch(sendOtpApi({ phone: mobile, purpose: otpFlow === 'forgot-password' ? 'reset_password' : 'register' })).unwrap();
             dispatch(clearOtp());
             inputs.current[0]?.focus();
+            
+            // Trigger notification for OTP sent
+            await notifyRegistrationOtpSent({ phone: mobile });
+            
             alert("OTP resent successfully");
         } catch (err) {
             alert(err || "Failed to resend OTP");

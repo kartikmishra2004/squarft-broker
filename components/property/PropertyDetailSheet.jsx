@@ -4,20 +4,18 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialCommunityIcons, Ionicons, Feather } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   BottomSheetModal,
-  BottomSheetView,
   BottomSheetScrollView,
   BottomSheetBackdrop,
 } from "@gorhom/bottom-sheet";
 import ZoomableImage from "./ZoomableImage";
 
 const naksha = require("../../assets/images/building_naksha.png");
-import { followUpsData } from "../../data/followups";
 
 const { width } = Dimensions.get("window");
 
@@ -55,16 +53,148 @@ function AmenityItem({ label }) {
   );
 }
 
+const firstValue = (source, keys) => {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return null;
+};
+
+const formatTextValue = (value, fallback = "N/A") => {
+  if (value === undefined || value === null || value === "") return fallback;
+  return String(value)
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const formatReraStatus = (value) => {
+  if (value === undefined || value === null || value === "") return "N/A";
+  if (typeof value === "boolean") return value ? "Approved" : "Not Approved";
+
+  const normalized = String(value).trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalized === "approved" || normalized === "yes" || normalized === "true") return "Approved";
+  if (
+    normalized === "not_approved" ||
+    normalized === "unapproved" ||
+    normalized === "no" ||
+    normalized === "false"
+  ) {
+    return "Not Approved";
+  }
+  return formatTextValue(value);
+};
+
+const normalizeAmenities = (item) => {
+  const raw = firstValue(item, [
+    "amenities",
+    "world_class_amenities",
+    "worldClassAmenities",
+    "admin_amenities",
+  ]);
+
+  if (!raw) return [];
+
+  if (Array.isArray(raw)) {
+    return raw
+      .map((amenity) => {
+        if (typeof amenity === "string") return amenity;
+        return amenity?.name || amenity?.label || amenity?.title || amenity?.amenity_name;
+      })
+      .filter(Boolean);
+  }
+
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return normalizeAmenities({ amenities: parsed });
+    } catch {
+      // Plain comma-separated amenities are also supported.
+    }
+
+    return raw.split(",").map((amenity) => amenity.trim()).filter(Boolean);
+  }
+
+  return [];
+};
+
+const getInitials = (name) => {
+  const words = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "--";
+  return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
+};
+
+const getFollowUpStyles = (status) => {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized.includes("visit") || normalized.includes("pending")) {
+    return { statusColor: "#FE8A71", statusBg: "#FFF1EF" };
+  }
+  return { statusColor: "#4A43EC", statusBg: "#F1F3FF" };
+};
+
+const normalizeFollowUps = (item) => {
+  const raw = firstValue(item, [
+    "follow_ups",
+    "followups",
+    "followUps",
+    "admin_follow_ups",
+    "adminFollowUps",
+  ]);
+
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((followUp, index) => {
+    const customerName = firstValue(followUp, [
+      "customerName",
+      "customer_name",
+      "client_name",
+      "lead_name",
+      "name",
+    ]) || "Customer";
+    const salesOfficer = firstValue(followUp, [
+      "salesOfficer",
+      "sales_officer",
+      "assigned_to_name",
+      "officer_name",
+      "broker_name",
+    ]) || "Unassigned";
+    const status = firstValue(followUp, ["status", "stage", "lead_status"]) || "Follow Up";
+    const styles = getFollowUpStyles(status);
+
+    return {
+      id: firstValue(followUp, ["id", "follow_up_id", "lead_id"]) || String(index),
+      status,
+      statusColor: followUp.statusColor || followUp.status_color || styles.statusColor,
+      statusBg: followUp.statusBg || followUp.status_bg || styles.statusBg,
+      unit: firstValue(followUp, ["unit", "unit_no", "unit_number", "property_unit"]) || "Unit not set",
+      customerName,
+      nextEvent: firstValue(followUp, [
+        "nextEvent",
+        "next_event",
+        "next_follow_up",
+        "next_followup",
+        "next_payment",
+        "event_label",
+      ]) || "Next action not set",
+      salesOfficer,
+      officerInitials: firstValue(followUp, ["officerInitials", "officer_initials"]) || getInitials(salesOfficer),
+    };
+  });
+};
+
 export default function PropertyDetailSheet({
   visible,
   onClose,
   item,
+  loading = false,
+  error = null,
 }) {
-  const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef(null);
   const snapPoints = useMemo(() => ["99%"], []);
   
-  const [floorPlanVisible, setFloorPlanVisible] = useState(false);
+  const floorPlanVisible = false;
   const [zoomVisible, setZoomVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("detail"); 
 
@@ -75,6 +205,12 @@ export default function PropertyDetailSheet({
       bottomSheetModalRef.current?.dismiss();
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (visible) {
+      setActiveTab("detail");
+    }
+  }, [visible, item?.id]);
 
   const renderBackdrop = useCallback(
     (props) => (
@@ -90,14 +226,93 @@ export default function PropertyDetailSheet({
 
   if (!item) return null;
 
-  const amenitiesList = [
-    "Gymnasium",
-    "Swimming Pool",
-    "24/7 Security",
-    "Power Backup",
-    "Car Parking",
-    "Garden"
-  ];
+  const amenitiesList = normalizeAmenities(item);
+  const followUps = normalizeFollowUps(item);
+  
+  // Get category to determine if residential or commercial
+  const category = String(firstValue(item, ["category", "type", "property_category"]) || "").toLowerCase();
+  const isResidential = category.includes("residential");
+  
+  // For residential: show BHK type, for commercial: show property type
+  const getPropertySubtype = () => {
+    if (isResidential) {
+      // Check for BHK fields
+      const bhkType = firstValue(item, [
+        "bhk_type",
+        "bhkType",
+        "kind_of_property",
+        "kindOfProperty",
+        "bedrooms"
+      ]);
+      
+      console.log('🏠 [PropertyDetailSheet] Residential property BHK data:', {
+        category,
+        bhkType,
+        bhk_type: item.bhk_type,
+        kind_of_property: item.kind_of_property,
+        bedrooms: item.bedrooms
+      });
+      
+      if (bhkType) {
+        const bhkStr = String(bhkType).toLowerCase();
+        // If already formatted as "3_bhk" or "3 bhk"
+        if (bhkStr.includes("bhk")) {
+          return formatTextValue(bhkType);
+        }
+        // If it's just a number like "3" or 3
+        const num = parseInt(bhkType);
+        if (!isNaN(num)) {
+          return num >= 5 ? "5+ BHK" : `${num} BHK`;
+        }
+      }
+    } else {
+      console.log('🏢 [PropertyDetailSheet] Commercial property type data:', {
+        category,
+        property_sub_type: item.property_sub_type,
+        sub_type: item.sub_type,
+        property_type: item.property_type
+      });
+    }
+    
+    // For commercial or if BHK not found, show property type/subtype
+    return formatTextValue(firstValue(item, [
+      "property_sub_type",
+      "property_subtype",
+      "property_subtype_name",
+      "sub_type",
+      "subtype",
+      "property_type",
+    ]));
+  };
+  
+  const propertySubtype = getPropertySubtype();
+  
+  const reraStatus = formatReraStatus(firstValue(item, [
+    "rera_status",
+    "reraStatus",
+    "rera_approval_status",
+    "rera_approved",
+    "is_rera_approved",
+    "rea_status",
+    "reaStatus",
+    "rea_approval_status",
+    "rea_approved",
+    "is_rea_approved",
+  ]));
+  const views = firstValue(item, [
+    "views",
+    "view_count",
+    "total_views",
+    "users_seen_count",
+    "seen_count",
+    "unique_view_count",
+  ]);
+  const totalArea = firstValue(item, [
+    "total_area_sqft",
+    "areaSqft",
+    "total_area",
+    "area",
+  ]);
 
   // Handle different price formats from API
   const getFormattedPrice = () => {
@@ -179,6 +394,13 @@ export default function PropertyDetailSheet({
               className="mx-5 rounded-2xl mb-14 border border-gray-300"
               contentContainerStyle={{ paddingBottom: 16 }}
             >
+              {error ? (
+                <View className="mx-4 mt-4 rounded-2xl bg-[#FFF1EF] border border-[#FFD7CF] px-4 py-3">
+                  <Text className="text-[12px] font-manrope-bold text-[#B42318]">Could not load latest details</Text>
+                  <Text className="text-[11px] font-manrope-medium text-[#B42318] mt-1">{error}</Text>
+                </View>
+              ) : null}
+
               {/* Hero Image Section */}
               <View style={{ height: 145, overflow: "hidden" }}>
                 <View style={{ flex: 1, flexDirection: "row" }}>
@@ -259,7 +481,7 @@ export default function PropertyDetailSheet({
               <View className="mx-5 mb-2">
                 <View className="flex-row items-center justify-between mb-2">
                   <View>
-                    <Text className="text-[12px] font-manrope-bold text-gray-500 uppercase">{item.category || "Apartment"}</Text>
+                    <Text className="text-[12px] font-manrope-bold text-gray-500 uppercase">{propertySubtype || item.category || "Property"}</Text>
                     <Text className="text-[16px] font-manrope-extrabold text-[#0F172A]">{item.title || item.name || 'Property'}</Text>
                     <Text className="text-[15px] font-manrope-bold text-[#4A43EC] mt-0.5">{priceFormatted}</Text>
                   </View>
@@ -274,7 +496,7 @@ export default function PropertyDetailSheet({
                         <MaterialCommunityIcons name="magnify-plus-outline" size={16} color="#fff" />
                       </View>
                     </TouchableOpacity>
-                    <Text className="text-[11px] font-manrope-regular text-gray-400 mt-2">{item.beds} BHK · {item.areaSqft || item.area} sq.ft.</Text>
+                    <Text className="text-[11px] font-manrope-regular text-gray-400 mt-2">{propertySubtype} · {item.areaSqft || item.area} sq.ft.</Text>
                   </View>
                 )}
               </View>
@@ -282,10 +504,10 @@ export default function PropertyDetailSheet({
               {/* Stats Grid */}
               <View className="flex-row flex-wrap mx-4 justify-between mb-3 mt-4">
                 {[
-                  { label: "AREA", value: `${item.total_area_sqft || item.areaSqft || item.total_area || 'N/A'} sqft` },
-                  { label: "BEDS", value: `${item.beds || item.bedrooms || 'N/A'} Units` },
-                  { label: "BATHS", value: `${item.baths || item.bathrooms || 'N/A'} Units` },
-                  { label: "VIEWS", value: item.views || "120+" },
+                  { label: "AREA", value: totalArea ? `${totalArea} sqft` : "N/A" },
+                  { label: "PROPERTY SUB-TYPE", value: propertySubtype },
+                  { label: "RERA STATUS", value: reraStatus },
+                  { label: "VIEWS", value: views ?? "0" },
                 ].map((stat) => (
                   <View
                     key={stat.label}
@@ -301,11 +523,19 @@ export default function PropertyDetailSheet({
               {/* Amenities Section */}
               <View className="mx-4 bg-white border border-gray-100 rounded-2xl p-4 px-5 mb-2">
                 <Text className="text-[15px] font-manrope-regular text-[#1A1A1A] mb-4">World-Class Amenities</Text>
-                <View className="flex-row flex-wrap">
-                  {amenitiesList.map((a, i) => (
-                    <AmenityItem key={i} label={a} />
-                  ))}
-                </View>
+                {loading ? (
+                  <View className="py-5 items-center">
+                    <ActivityIndicator size="small" color="#4A43EC" />
+                  </View>
+                ) : amenitiesList.length > 0 ? (
+                  <View className="flex-row flex-wrap">
+                    {amenitiesList.map((a, i) => (
+                      <AmenityItem key={`${a}-${i}`} label={a} />
+                    ))}
+                  </View>
+                ) : (
+                  <Text className="text-[12px] font-manrope-medium text-gray-400">No amenities added from admin yet.</Text>
+                )}
               </View>
             </BottomSheetScrollView>
           ) : (
@@ -314,31 +544,52 @@ export default function PropertyDetailSheet({
               className="mx-5 mb-5"
               contentContainerStyle={{ paddingBottom: 20 }}
             >
-              {followUpsData.map((f) => (
-                <View key={f.id} className="bg-white border border-gray-100 rounded-[18px] p-4 mb-3" style={{ elevation: 1, shadowColor: '#8d8c8cff', shadowOpacity: 0.03, shadowRadius: 2 }}>
-                  <View className="flex-row items-center justify-between mb-2">
-                    <View className="flex-row items-center gap-2">
-                      <View className="px-2.5 py-0.5 rounded-full" style={{ backgroundColor: f.statusBg }}>
-                        <Text className="text-[9px] font-manrope-bold" style={{ color: f.statusColor }}>{f.status}</Text>
-                      </View>
-                      <Text className="text-[10px] font-manrope-bold text-gray-400">{f.unit}</Text>
-                    </View>
-                  </View>
-
-                  <Text className="text-[14px] font-manrope-extrabold text-[#0F172A]">{f.customerName}</Text>
-                  <Text className="text-[10px] font-manrope-medium text-gray-500 mt-0.5">{f.nextEvent}</Text>
-
-                  <View className="h-[1px] bg-gray-200 w-full my-3" />
-
-                  <Text className="text-[9px] font-manrope-bold text-gray-600 uppercase mb-1.5">Sales Officer</Text>
-                  <View className="flex-row items-center gap-2.5">
-                    <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center border border-gray-400">
-                      <Text className="text-[10px] font-manrope-bold text-gray-800 ">{f.officerInitials}</Text>
-                    </View>
-                    <Text className="text-[12px] font-manrope-bold text-[#333]">{f.salesOfficer}</Text>
-                  </View>
+              {error ? (
+                <View className="py-10 items-center px-6">
+                  <Feather name="alert-circle" size={34} color="#FE8A71" />
+                  <Text className="text-[13px] font-manrope-bold text-[#B42318] mt-3 text-center">Could not load follow ups</Text>
+                  <Text className="text-[11px] font-manrope-medium text-[#B42318] mt-1 text-center">{error}</Text>
                 </View>
-              ))}
+              ) : loading ? (
+                <View className="py-10 items-center">
+                  <ActivityIndicator size="small" color="#4A43EC" />
+                  <Text className="text-[12px] font-manrope-medium text-gray-400 mt-3">Loading follow ups...</Text>
+                </View>
+              ) : followUps.length > 0 ? (
+                followUps.map((f) => (
+                  <View key={f.id} className="bg-white border border-gray-100 rounded-[18px] p-4 mb-3" style={{ elevation: 1, shadowColor: '#8d8c8cff', shadowOpacity: 0.03, shadowRadius: 2 }}>
+                    <View className="flex-row items-center justify-between mb-2">
+                      <View className="flex-row items-center gap-2">
+                        <View className="px-2.5 py-0.5 rounded-full" style={{ backgroundColor: f.statusBg }}>
+                          <Text className="text-[9px] font-manrope-bold" style={{ color: f.statusColor }}>{f.status}</Text>
+                        </View>
+                        <Text className="text-[10px] font-manrope-bold text-gray-400">{f.unit}</Text>
+                      </View>
+                    </View>
+
+                    <Text className="text-[14px] font-manrope-extrabold text-[#0F172A]">{f.customerName}</Text>
+                    <Text className="text-[10px] font-manrope-medium text-gray-500 mt-0.5">{f.nextEvent}</Text>
+
+                    <View className="h-[1px] bg-gray-200 w-full my-3" />
+
+                    <Text className="text-[9px] font-manrope-bold text-gray-600 uppercase mb-1.5">Sales Officer</Text>
+                    <View className="flex-row items-center gap-2.5">
+                      <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center border border-gray-400">
+                        <Text className="text-[10px] font-manrope-bold text-gray-800 ">{f.officerInitials}</Text>
+                      </View>
+                      <Text className="text-[12px] font-manrope-bold text-[#333]">{f.salesOfficer}</Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View className="py-10 items-center px-6">
+                  <Feather name="clipboard" size={34} color="#CBD5E1" />
+                  <Text className="text-[13px] font-manrope-bold text-[#64748B] mt-3 text-center">No follow ups added yet</Text>
+                  <Text className="text-[11px] font-manrope-medium text-gray-400 mt-1 text-center">
+                    Follow-up details will appear here once admin sends them.
+                  </Text>
+                </View>
+              )}
             </BottomSheetScrollView>
           )}
 

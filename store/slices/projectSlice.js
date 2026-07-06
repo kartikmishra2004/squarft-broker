@@ -98,7 +98,7 @@ export const updateOwnerDetails = createAsyncThunk(
 // Step 3 — property details (UPDATED: now includes all new fields)
 export const updatePropertyDetails = createAsyncThunk(
     'project/updatePropertyDetails',
-    async ({ projectId, name, tower_number, flat_number, location, city, area, state, pincode, nearby_project, khasra_number, property_age, owner_contact, owner_email, contact_no, contact_email }, { getState, rejectWithValue }) => {
+    async ({ projectId, name, tower_number, flat_number, location, city, area, state, pincode, nearby_project, khasra_number, property_age, latitude, longitude, owner_contact, owner_email, contact_no, contact_email }, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
             const resolvedContactNo = owner_contact || contact_no || null;
@@ -113,8 +113,8 @@ export const updatePropertyDetails = createAsyncThunk(
                 bedrooms: null,                                    // Will be set based on BHK in future
                 bathrooms: null,                                   // Not collected yet
                 floors: null,                                      // Not collected yet
-                latitude: null,                                    // Not collected yet
-                longitude: null,                                   // Not collected yet
+                latitude: latitude !== undefined ? latitude : null,
+                longitude: longitude !== undefined ? longitude : null,
                 rera_id: null,                                     // Not collected yet
                 city: city || null,                                // ✅ From Step 3 form
                 total_area: area || null,                          // ✅ Maps to 'area' column (locality name)
@@ -129,7 +129,7 @@ export const updatePropertyDetails = createAsyncThunk(
             };
             
             console.log('=== updatePropertyDetails DEBUG ===');
-            console.log('Input:', { projectId, name, tower_number, flat_number, location, city, area, state, pincode, khasra_number, property_age });
+            console.log('Input:', { projectId, name, tower_number, flat_number, location, city, area, state, pincode, khasra_number, property_age, latitude, longitude });
             console.log('Mapped payload:', JSON.stringify(payload));
             console.log('API: PUT /api/v1/broker/properties/:propertyId/property-details');
             console.log('===================================');

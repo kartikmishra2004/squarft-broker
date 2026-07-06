@@ -17,11 +17,12 @@ import { propertyTypes } from "../../data/listingData";
 import { upcomingProjectsData } from "../../data/properties";
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import Slider from "@react-native-community/slider";
+import PremiumRangeSlider from "../../components/PremiumRangeSlider";
 import PropertyCard from "../../components/property/PropertyCard";
 import CategoryTile from "../../components/property/CategoryTile";
 import PropertyDetailSheet from "../../components/property/PropertyDetailSheet";
-// ✅ FIXED: Imported the correct action that matches your slice definition parameters
 import { fetchShortlistedProperties } from "../../store/slices/propertySlice";
+import { fetchPropertyDetails, fetchProjectDetails } from "../../store/slices/myAddedSlice";
 
 export default function PropertyType() {
     // ✅ FIXED: Unwrapped both typeId and category routing parameters forwarded from Home screen
@@ -49,6 +50,9 @@ export default function PropertyType() {
     const snapPoints = useMemo(() => ["65%"], []);
     const [selectedProperty, setSelectedProperty] = useState(null);
     const [propertySheetVisible, setPropertySheetVisible] = useState(false);
+    const [propertyDetailLoading, setPropertyDetailLoading] = useState(false);
+    const [propertyDetailError, setPropertyDetailError] = useState(null);
+    const detailRequestRef = useRef(0);
 
     // ✅ FIXED: Wired up your real fetch thunk to handle category and property_type filters cleanly
     useEffect(() => {
@@ -81,8 +85,16 @@ export default function PropertyType() {
     const handleCloseFilter = () => bottomSheetRef.current?.close();
 
     const handleApplyFilters = () => {
+        console.log('🎯 [PropertyType] Applying filters:', {
+            tempPriceRange,
+            beforeSet_priceRange: priceRange
+        });
         setPriceRange(tempPriceRange);
         setFacilityFilter(tempFacilityFilter);
+        console.log('✅ [PropertyType] Filters applied:', {
+            priceRange: tempPriceRange,
+            facilityFilter: tempFacilityFilter
+        });
         handleCloseFilter();
     };
 
@@ -96,10 +108,55 @@ export default function PropertyType() {
         setView("list");
     };
 
-    const handlePropertyPress = (item) => {
+    const handlePropertyPress = useCallback((item) => {
+        if (!item?.id) return;
+
+        const requestId = detailRequestRef.current + 1;
+        detailRequestRef.current = requestId;
+        const isProperty = item?.item_type === 'property';
+        const fetchAction = isProperty ? fetchPropertyDetails : fetchProjectDetails;
+
+        console.log('🏠 [PropertyType] Fetching details for:', {
+            id: item.id,
+            type: isProperty ? 'property' : 'project',
+            item_type: item.item_type
+        });
+
         setSelectedProperty(item);
         setPropertySheetVisible(true);
-    };
+        setPropertyDetailLoading(true);
+        setPropertyDetailError(null);
+
+        dispatch(fetchAction(item.id))
+            .unwrap()
+            .then((details) => {
+                if (detailRequestRef.current !== requestId) return;
+                console.log('✅ [PropertyType] Details fetched:', details);
+                setSelectedProperty({
+                    ...item,
+                    ...details,
+                    item_type: details?.item_type || item.item_type,
+                });
+            })
+            .catch((error) => {
+                if (detailRequestRef.current !== requestId) return;
+                console.error('❌ [PropertyType] Failed to fetch details:', error);
+                const message = typeof error === 'string' ? error : error?.message || 'Failed to load property details';
+                setPropertyDetailError(message);
+            })
+            .finally(() => {
+                if (detailRequestRef.current === requestId) {
+                    setPropertyDetailLoading(false);
+                }
+            });
+    }, [dispatch]);
+
+    const handleClosePropertySheet = useCallback(() => {
+        detailRequestRef.current += 1;
+        setPropertySheetVisible(false);
+        setPropertyDetailLoading(false);
+        setPropertyDetailError(null);
+    }, []);
 
     const currentTypeLabel = useMemo(() => {
         const predefined = propertyTypes.find(t => t.id === selectedTypeId);
@@ -111,13 +168,41 @@ export default function PropertyType() {
     const filteredProperties = useMemo(() => {
         if (!properties || properties.length === 0) return [];
         
+        console.log('🔍 [PropertyType] Filtering with:', {
+            searchQuery,
+            priceRange,
+            totalProperties: properties.length
+        });
+        
         return properties.filter(p => {
+            // Search filter
             const matchSearch = searchQuery ? 
                 (p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) : true;
-            // Handle both base_price or min_price structures safely
-            const itemPrice = p.base_price || p.min_price || 0;
-            const matchPrice = priceRange ? itemPrice <= priceRange : true;
-            return matchSearch && matchPrice;
+            
+            // Price filter - get the property price from various possible fields
+            // Priority: base_price > min_price > price_from > max_price > price_to
+            const itemPrice = p.base_price || p.min_price || p.price_from || p.max_price || p.price_to || 0;
+            
+            // If priceRange is set (not null), filter properties where price is <= priceRange
+            // If priceRange is null (no filter applied), show all properties
+            const matchPrice = priceRange !== null && priceRange !== undefined ? itemPrice <= priceRange : true;
+            
+            const match = matchSearch && matchPrice;
+            
+            // Debug logging for filtered properties
+            if (!match && priceRange) {
+                console.log('🚫 [PropertyType] Filtered out:', {
+                    title: p.title,
+                    base_price: p.base_price,
+                    min_price: p.min_price,
+                    itemPrice,
+                    priceRange,
+                    matchPrice,
+                    reason: !matchPrice ? 'price too high' : 'search mismatch'
+                });
+            }
+            
+            return match;
         });
     }, [properties, searchQuery, priceRange]);
 
@@ -228,45 +313,38 @@ export default function PropertyType() {
                             </Pressable>
                         </View>
 
-                        <View className="mb-8">
-                            <View className="flex-row justify-between items-center mb-4">
+                        <View className="mb-6">
+                            <View className="flex-row justify-between items-center mb-10">
                                 <Text className="text-[13px] font-lato-bold">Price Range</Text>
-                                <Text className="text-[13px] font-lato-bold text-[#4A43EC]">{tempPriceRange ? `₹${tempPriceRange}` : 'Not Applied'}</Text>
+                                <Text className="text-[13px] font-lato-bold text-[#4A43EC]">
+                                    {tempPriceRange ? `₹${(tempPriceRange / 1000).toFixed(0)}K` : 'Not Applied'}
+                                </Text>
                             </View>
-                            <View className="h-10 justify-center">
-                                <Slider
-                                    style={{ width: '100%', height: 40 }}
-                                    minimumValue={0}
-                                    maximumValue={200000}
+                            <View className="h-12 justify-center mb-4">
+                                <PremiumRangeSlider
+                                    min={0}
+                                    max={200000}
+                                    initialMin={0}
+                                    initialMax={tempPriceRange || 200000}
                                     step={1000}
-                                    value={tempPriceRange || 200000}
-                                    onValueChange={setTempPriceRange}
-                                    minimumTrackTintColor="#4A43EC"
-                                    maximumTrackTintColor="#EBF1FF"
-                                    thumbTintColor="#4A43EC"
+                                    onValuesChangeFinish={(values) => {
+                                        console.log('🎚️ [PropertyType] Slider values:', values, 'Taking values[1]:', values[1]);
+                                        setTempPriceRange(values[1]);
+                                    }}
+                                    formatLabel={(val) => `₹${(val / 1000).toFixed(0)}K`}
+                                    isSingleThumb={true}
                                 />
                             </View>
-                            <View className="flex-row justify-between mt-2">
-                                {[4000, 50000, 100000, 150000, 200000].map(val => (
-                                    <Text key={val} className="text-[9px] text-gray-400 font-lato-medium">₹{val}</Text>
+                            <View className="flex-row justify-between px-1">
+                                {[0, 50000, 100000, 150000, 200000].map(val => (
+                                    <Text key={val} className="text-[10px] text-gray-400 font-lato-medium">
+                                        ₹{val === 0 ? '0' : `${(val / 1000)}K`}
+                                    </Text>
                                 ))}
                             </View>
                         </View>
 
-                        <View className="mb-10">
-                            <Text className="text-[14px] font-lato-bold mb-4">Facilities</Text>
-                            <View className="flex-row gap-3">
-                                {['Furnished', 'Semi-Furnished', 'Unfurnished'].map(fac => (
-                                    <Pressable
-                                        key={fac}
-                                        onPress={() => setTempFacilityFilter(prev => prev === fac ? null : fac)}
-                                        className={`px-4 py-2.5 rounded-lg border flex-1 items-center justify-center ${tempFacilityFilter === fac ? 'bg-[#4A43EC] border-[#4A43EC]' : 'bg-white border-blue-200'}`}
-                                    >
-                                        <Text className={`text-[10px] font-lato-medium whitespace-nowrap ${tempFacilityFilter === fac ? 'text-white' : 'text-[#4A43EC]'}`}>{fac}</Text>
-                                    </Pressable>
-                                ))}
-                            </View>
-                        </View>
+                     
 
                         <View className="flex-row gap-4 mt-auto">
                             <Pressable
@@ -288,7 +366,9 @@ export default function PropertyType() {
                 <PropertyDetailSheet 
                     visible={propertySheetVisible}
                     item={selectedProperty} 
-                    onClose={() => setPropertySheetVisible(false)}
+                    loading={propertyDetailLoading}
+                    error={propertyDetailError}
+                    onClose={handleClosePropertySheet}
                 />
             </View>
         );
