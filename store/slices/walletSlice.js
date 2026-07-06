@@ -133,17 +133,52 @@ export const fetchCommissionHistory = createAsyncThunk(
     async ({ page = 1, limit = 10 } = {}, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
+            console.log('💰 [walletSlice] Fetching commission history with token:', token ? 'present' : 'missing');
+            
             const params = new URLSearchParams({
                 page: String(page),
                 limit: String(limit),
             });
-            const response = await fetch(`${API_BASE_URL}/api/v1/broker/wallet/commissionHistory?${params.toString()}`, {
+            // FIX: Changed from commissionHistory to commission-history (matches backend route)
+            const url = `${API_BASE_URL}/api/v1/broker/wallet/commission-history?${params.toString()}`;
+            console.log('💰 [walletSlice] Request URL:', url);
+            
+            const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
+            
+            console.log('💰 [walletSlice] Response status:', response.status);
+            
             const data = await response.json();
+            console.log('💰 [walletSlice] Response data:', JSON.stringify(data, null, 2));
+            
             if (!response.ok) return rejectWithValue(data.message || 'Failed to fetch commission history');
-            return normalizeCommissionPayload(data.data);
+            
+            // FIX: Backend now returns data.commissions directly (not data.transactions)
+            const normalized = {
+                count: data.data?.pagination?.total || 0,
+                page: data.data?.pagination?.page || 1,
+                commissions: Array.isArray(data.data?.commissions) 
+                    ? data.data.commissions.map(commission => ({
+                        ...commission,
+                        amount: Number(commission.commissionAmount || 0),
+                        propertyName: commission.propertyName || '',
+                        property_name: commission.propertyName || '',
+                        propertyAddress: commission.propertyAddress || '',
+                        property_address: commission.propertyAddress || '',
+                        createdAt: commission.date || null,
+                        created_at: commission.date || null,
+                        type: 'credit',
+                        // Backend returns "Paid" or "Pending", keep as is
+                        status: commission.status || 'Pending',
+                    }))
+                    : [],
+            };
+            console.log('💰 [walletSlice] Normalized data:', JSON.stringify(normalized, null, 2));
+            
+            return normalized;
         } catch (err) {
+            console.error('❌ [walletSlice] Error fetching commission history:', err);
             return rejectWithValue(err.message);
         }
     }

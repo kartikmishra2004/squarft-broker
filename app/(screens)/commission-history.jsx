@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, StatusBar, TextInput, ActivityIndicator, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, Pressable, ScrollView, StatusBar, TextInput, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchCommissionHistory } from '../../store/slices/walletSlice';
+import CommissionFilterModal from '../../components/CommissionFilterModal';
 
 const CommissionHistoryScreen = () => {
     const router = useRouter();
@@ -11,14 +12,21 @@ const CommissionHistoryScreen = () => {
     const { commissions, loading, error } = useSelector((state) => state.wallet);
     const [searchText, setSearchText] = useState('');
     const [filterModalVisible, setFilterModalVisible] = useState(false);
-    const [statusFilter, setStatusFilter] = useState('all'); // all, credit, pending
-    const [dateFilter, setDateFilter] = useState('all'); // all, month, 3months, 6months
-    const [tempStatusFilter, setTempStatusFilter] = useState('all');
-    const [tempDateFilter, setTempDateFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [dateFilter, setDateFilter] = useState('all');
 
     useEffect(() => {
+        console.log('🔍 [commission-history] Fetching commission history...');
         dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
     }, [dispatch]);
+
+    // Add debug logging for commission data
+    useEffect(() => {
+        console.log('💰 [commission-history] Commissions state:', commissions);
+        console.log('💰 [commission-history] Commissions length:', Array.isArray(commissions) ? commissions.length : 'not an array');
+        console.log('💰 [commission-history] Loading:', loading);
+        console.log('💰 [commission-history] Error:', error);
+    }, [commissions, loading, error]);
 
     const hasActiveFilters = statusFilter !== 'all' || dateFilter !== 'all';
 
@@ -38,9 +46,14 @@ const CommissionHistoryScreen = () => {
 
         // Status filter
         if (statusFilter !== 'all') {
-            result = result.filter(item => 
-                (item.status || 'credit').toLowerCase() === statusFilter.toLowerCase()
-            );
+            result = result.filter(item => {
+                const itemStatus = (item.status || 'credit').toLowerCase();
+                // Map 'paid' filter to 'credit' status in data
+                if (statusFilter === 'paid') {
+                    return itemStatus === 'credit' || itemStatus === 'paid' || itemStatus === 'completed';
+                }
+                return itemStatus === statusFilter.toLowerCase();
+            });
         }
 
         // Date filter
@@ -67,20 +80,15 @@ const CommissionHistoryScreen = () => {
     }, [searchText, commissions, statusFilter, dateFilter]);
 
     const handleOpenFilter = () => {
-        setTempStatusFilter(statusFilter);
-        setTempDateFilter(dateFilter);
+        console.log('🎯🎯🎯 FILTER BUTTON PRESSED - Opening modal!');
         setFilterModalVisible(true);
     };
 
-    const handleApplyFilters = () => {
-        setStatusFilter(tempStatusFilter);
-        setDateFilter(tempDateFilter);
+    const handleApplyFilters = (filters) => {
+        console.log('📊 [commission-history] Filters applied:', filters);
+        setStatusFilter(filters.status);
+        setDateFilter(filters.dateFilter);
         setFilterModalVisible(false);
-    };
-
-    const handleResetFilters = () => {
-        setTempStatusFilter('all');
-        setTempDateFilter('all');
     };
 
     const formatDate = (dateStr) => {
@@ -120,7 +128,10 @@ const CommissionHistoryScreen = () => {
                 </View>
                 <TouchableOpacity 
                     className="w-[44px] h-[44px] bg-[#EBF1FF] rounded-xl items-center justify-center relative"
-                    onPress={handleOpenFilter}
+                    onPress={() => {
+                        console.log('🎯🎯🎯 FILTER BUTTON PRESSED!');
+                        handleOpenFilter();
+                    }}
                     activeOpacity={0.7}
                 >
                     <MaterialCommunityIcons name="filter-variant" size={22} color="#4A43EC" />
@@ -131,189 +142,13 @@ const CommissionHistoryScreen = () => {
             </View>
 
             {/* Filter Modal */}
-            <Modal
+            <CommissionFilterModal
                 visible={filterModalVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setFilterModalVisible(false)}
-            >
-                <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <View className="bg-white rounded-3xl mx-6 w-[85%] overflow-hidden" style={{ elevation: 10 }}>
-                        {/* Header */}
-                        <View className="px-6 pt-6 pb-4 border-b border-gray-100">
-                            <Text className="text-[18px] font-manrope-bold text-[#1a1a1a] text-center">
-                                Filter Commissions
-                            </Text>
-                        </View>
-
-                        {/* Filter Options */}
-                        <ScrollView className="px-6 py-5" style={{ maxHeight: 400 }}>
-                            {/* Status Filter */}
-                            <View className="mb-6">
-                                <Text className="text-[14px] font-manrope-bold text-[#1a1a1a] mb-3">
-                                    Status
-                                </Text>
-                                <View className="flex-row flex-wrap gap-2">
-                                    {[
-                                        { id: 'all', label: 'All Status' },
-                                        { id: 'credit', label: 'Credited' },
-                                        { id: 'pending', label: 'Pending' },
-                                    ].map((status) => (
-                                        <TouchableOpacity
-                                            key={status.id}
-                                            onPress={() => setTempStatusFilter(status.id)}
-                                            className={`px-5 py-3 rounded-xl border-2 ${
-                                                tempStatusFilter === status.id
-                                                    ? 'bg-[#F5F3FF] border-[#4A43EC]'
-                                                    : 'bg-white border-[#E5E7EB]'
-                                            }`}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text
-                                                className={`text-[13px] font-manrope-bold ${
-                                                    tempStatusFilter === status.id
-                                                        ? 'text-[#4A43EC]'
-                                                        : 'text-[#6B7280]'
-                                                }`}
-                                            >
-                                                {status.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
-
-                            {/* Date Range Filter */}
-                            <View>
-                                <Text className="text-[14px] font-manrope-bold text-[#1a1a1a] mb-3">
-                                    Time Period
-                                </Text>
-                                <View className="flex-row flex-wrap gap-2">
-                                    {[
-                                        { id: 'all', label: 'All Time' },
-                                        { id: 'month', label: 'This Month' },
-                                        { id: '3months', label: 'Last 3 Months' },
-                                        { id: '6months', label: 'Last 6 Months' },
-                                    ].map((period) => (
-                                        <TouchableOpacity
-                                            key={period.id}
-                                            onPress={() => setTempDateFilter(period.id)}
-                                            className={`px-5 py-3 rounded-xl border-2 ${
-                                                tempDateFilter === period.id
-                                                    ? 'bg-[#F5F3FF] border-[#4A43EC]'
-                                                    : 'bg-white border-[#E5E7EB]'
-                                            }`}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text
-                                                className={`text-[13px] font-manrope-bold ${
-                                                    tempDateFilter === period.id
-                                                        ? 'text-[#4A43EC]'
-                                                        : 'text-[#6B7280]'
-                                                }`}
-                                            >
-                                                {period.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
-                        </ScrollView>
-
-                        {/* Footer Buttons */}
-                        <View className="flex-row gap-3 px-6 py-4 border-t border-gray-100">
-                            <TouchableOpacity
-                                className="flex-1 py-3.5 rounded-xl items-center justify-center border-2 border-[#4A43EC]"
-                                onPress={handleResetFilters}
-                                activeOpacity={0.7}
-                            >
-                                <Text className="text-[#4A43EC] text-[14px] font-manrope-bold">Reset</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                className="flex-1 py-3.5 rounded-xl items-center justify-center bg-[#4A43EC]"
-                                onPress={handleApplyFilters}
-                                activeOpacity={0.7}
-                            >
-                                <Text className="text-white text-[14px] font-manrope-bold">Apply</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Minimalistic Filters */}
-            <View className="px-6 mb-3">
-                {/* Status Filter */}
-                <View className="flex-row items-center gap-2 mb-2">
-                    <Text className="text-[11px] text-gray-500 font-manrope-medium mr-1">Status:</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-1">
-                        <View className="flex-row gap-2">
-                            {[
-                                { id: 'all', label: 'All' },
-                                { id: 'credit', label: 'Credit' },
-                                { id: 'pending', label: 'Pending' },
-                            ].map((status) => (
-                                <TouchableOpacity
-                                    key={status.id}
-                                    onPress={() => setStatusFilter(status.id)}
-                                    className={`px-3 py-1.5 rounded-full ${
-                                        statusFilter === status.id
-                                            ? 'bg-[#4A43EC]'
-                                            : 'bg-gray-100'
-                                    }`}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text
-                                        className={`text-[11px] font-manrope-bold ${
-                                            statusFilter === status.id
-                                                ? 'text-white'
-                                                : 'text-gray-600'
-                                        }`}
-                                    >
-                                        {status.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </ScrollView>
-                </View>
-
-                {/* Date Range Filter */}
-                <View className="flex-row items-center gap-2">
-                    <Text className="text-[11px] text-gray-500 font-manrope-medium mr-1">Period:</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-1">
-                        <View className="flex-row gap-2">
-                            {[
-                                { id: 'all', label: 'All Time' },
-                                { id: 'month', label: 'This Month' },
-                                { id: '3months', label: 'Last 3M' },
-                                { id: '6months', label: 'Last 6M' },
-                            ].map((period) => (
-                                <TouchableOpacity
-                                    key={period.id}
-                                    onPress={() => setDateFilter(period.id)}
-                                    className={`px-3 py-1.5 rounded-full ${
-                                        dateFilter === period.id
-                                            ? 'bg-[#4A43EC]'
-                                            : 'bg-gray-100'
-                                    }`}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text
-                                        className={`text-[11px] font-manrope-bold ${
-                                            dateFilter === period.id
-                                                ? 'text-white'
-                                                : 'text-gray-600'
-                                        }`}
-                                    >
-                                        {period.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </ScrollView>
-                </View>
-            </View>
+                onClose={() => setFilterModalVisible(false)}
+                onApplyFilters={handleApplyFilters}
+                initialStatus={statusFilter}
+                initialDateFilter={dateFilter}
+            />
 
             {loading ? (
                 <View className="flex-1 items-center justify-center">

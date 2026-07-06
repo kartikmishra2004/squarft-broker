@@ -3,11 +3,11 @@ import { View, Text, StyleSheet, Animated, PanResponder, Dimensions } from 'reac
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLIDER_WIDTH = SCREEN_WIDTH - 64; // 32px padding on each side
-const THUMB_SIZE = 28;
-const TRACK_HEIGHT = 6;
+const THUMB_SIZE = 20; // Reduced from 28 for minimalistic look
+const TRACK_HEIGHT = 4; // Reduced from 6 for minimalistic look
 const ACTIVE_COLOR = '#4A43EC';
 const INACTIVE_COLOR = '#E5E7EB';
-const THUMB_BORDER_WIDTH = 4;
+const THUMB_BORDER_WIDTH = 3; // Reduced from 4
 
 /**
  * Ultra-smooth premium range slider with Airbnb-quality interaction
@@ -95,11 +95,13 @@ const PremiumRangeSlider = ({
             },
             onPanResponderMove: (_, gestureState) => {
                 const currentMaxPos = valueToPosition(currentMaxValue.current);
+                // Reduce sensitivity by 30% for better control
+                const adjustedDx = gestureState.dx * 0.1;
                 const newPosition = Math.max(
                     0,
                     Math.min(
                         currentMaxPos - THUMB_SIZE, // Prevent overlap
-                        valueToPosition(currentMinValue.current) + gestureState.dx
+                        valueToPosition(currentMinValue.current) + adjustedDx
                     )
                 );
 
@@ -127,11 +129,13 @@ const PremiumRangeSlider = ({
             },
             onPanResponderMove: (_, gestureState) => {
                 const currentMinPos = valueToPosition(currentMinValue.current);
+                // Reduce sensitivity by 30% for better control
+                const adjustedDx = gestureState.dx * 0.7;
                 const newPosition = Math.max(
                     currentMinPos + THUMB_SIZE, // Prevent overlap
                     Math.min(
                         SLIDER_WIDTH,
-                        valueToPosition(currentMaxValue.current) + gestureState.dx
+                        valueToPosition(currentMaxValue.current) + adjustedDx
                     )
                 );
 
@@ -198,7 +202,7 @@ const PremiumRangeSlider = ({
                                 { translateX: minThumbPosition },
                                 { 
                                     scale: activeThumb === 'min' 
-                                        ? 1.15  // Subtle scale on active
+                                        ? 1.1  // Reduced from 1.15 for subtle feedback
                                         : 1 
                                 },
                             ],
@@ -219,7 +223,7 @@ const PremiumRangeSlider = ({
                                 { translateX: maxThumbPosition },
                                 { 
                                     scale: activeThumb === 'max' 
-                                        ? 1.15 
+                                        ? 1.1  // Reduced from 1.15 for subtle feedback
                                         : 1 
                                 },
                             ],
@@ -250,7 +254,7 @@ const styles = StyleSheet.create({
         color: ACTIVE_COLOR,
     },
     sliderContainer: {
-        height: THUMB_SIZE + 20, // Extra space for thumb
+        height: THUMB_SIZE + 20, 
         justifyContent: 'center',
         position: 'relative',
     },
@@ -293,9 +297,9 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     thumbInner: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        width: 6,  // Reduced from 8 for minimalistic look
+        height: 6, // Reduced from 8 for minimalistic look
+        borderRadius: 3,
         backgroundColor: ACTIVE_COLOR,
     },
 });

@@ -273,9 +273,6 @@ const WalletScreen = () => {
                 <BottomSheetView className="flex-1 px-6 pt-5">
                     <View className="flex-row items-center justify-between mb-1">
                         <Text className="text-[15px] font-manrope-extrabold text-[#272727]">{selectedTransaction?.property_name || 'Commission'}</Text>
-                        <Pressable onPress={() => bottomSheetModalRef.current?.dismiss()}>
-                            <Text className="text-[#FF4B4B] font-manrope-bold text-[12px]">Cancel</Text>
-                        </Pressable>
                     </View>
                     <Text className="text-gray-400 font-manrope-medium mb-5 text-[11px]">{selectedTransaction?.type === 'credit' ? 'Earned from property sale' : 'Withdrawal to bank'}</Text>
 

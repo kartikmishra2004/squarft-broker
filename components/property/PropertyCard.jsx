@@ -22,11 +22,29 @@ const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
     // Handle date
     const date = item.date || new Date(item.created_at || Date.now()).toLocaleDateString();
     
-    // Handle status
-    const status = item.status || item.is_active ? 'approved' : 'pending';
+    // Handle RERA status - check multiple possible fields same as modal
+    const getReraStatus = () => {
+        const reraValue = item.rera_status || item.reraStatus || item.rera_approval_status || 
+                         item.rera_approved || item.is_rera_approved || 
+                         item.rea_status || item.reaStatus || item.rea_approval_status || 
+                         item.rea_approved || item.is_rea_approved;
+        
+        if (reraValue === undefined || reraValue === null || reraValue === '') return 'N/A';
+        if (typeof reraValue === 'boolean') return reraValue ? 'Approved' : 'Not Approved';
+        
+        const normalized = String(reraValue).trim().toLowerCase().replace(/[\s-]+/g, '_');
+        if (normalized === 'approved' || normalized === 'yes' || normalized === 'true') return 'Approved';
+        if (normalized === 'not_approved' || normalized === 'unapproved' || normalized === 'no' || normalized === 'false') return 'Not Approved';
+        
+        // Format the value nicely
+        return String(reraValue).replace(/_/g, ' ').replace(/\s+/g, ' ').trim()
+               .replace(/\b\w/g, (char) => char.toUpperCase());
+    };
     
-    // Handle views
-    const views = item.views || 0;
+    const status = getReraStatus();
+    
+    // Handle views - check multiple possible fields
+    const views = item.views || item.view_count || item.total_views || item.users_seen_count || item.seen_count || item.unique_view_count || 0;
 
     return (
         <Pressable
@@ -60,7 +78,7 @@ const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
                 <View className="px-1 py-2.5">
 
                     <Text className="text-[14px] font-manrope-extrabold text-[#333333] mb-1" numberOfLines={1}>
-                        {propertyTypeLabel} {title}
+                        {title}
                     </Text>
 
 
@@ -75,11 +93,13 @@ const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
                             <Text className="text-[11px] text-[#393030] ml-1 font-lato-italic">{date}</Text>
                         </View>
 
-                        <View className={`flex-row items-center px-2 py-1 rounded-full ${status === 'approved' ? 'bg-[#1E9500]' :
-                            status === 'pending' ? 'bg-[#F2994A]' : 'bg-[#EB5757]'
-                            }`}>
+                        <View className={`flex-row items-center px-2 py-1 rounded-full ${
+                            status === 'Approved' ? 'bg-[#1E9500]' :
+                            status === 'Not Approved' ? 'bg-[#EB5757]' : 
+                            'bg-[#F2994A]'
+                        }`}>
                             <View className="w-1 h-1 rounded-full bg-white mr-1" />
-                            <Text className="text-[8px] text-white font-lato-bold capitalize">{status}</Text>
+                            <Text className="text-[8px] text-white font-lato-bold">{status}</Text>
                         </View>
                     </View>
                 </View>

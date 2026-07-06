@@ -180,12 +180,12 @@ export default function MyDocuments() {
                                 // Already uploaded — show existing with replace option
                                 <View>
                                     <View style={styles.fileBar}>
-                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
                                             <Ionicons name="checkmark-circle" size={16} color="#4A43EC" />
                                             <Text style={[styles.fileName, { color: "#4A43EC" }]}>Previously uploaded</Text>
                                         </View>
-                                        <Pressable onPress={() => pickImage(key, isCamera)}>
-                                            <Text style={{ fontSize: 12, fontFamily: "Manrope-Bold", color: "#4A43EC" }}>Replace</Text>
+                                        <Pressable onPress={() => pickImage(key, isCamera)} style={{ marginLeft: 12 }}>
+                                            <Text style={{ fontSize: 12, fontFamily: "Manrope-Bold", color: "#4A43EC" }}>Reupload</Text>
                                         </Pressable>
                                     </View>
                                     <View style={{ borderRadius: 12, overflow: "hidden", marginTop: 8 }}>
@@ -219,7 +219,9 @@ export default function MyDocuments() {
                 >
                     {loading
                         ? <ActivityIndicator color="white" />
-                        : <Text style={styles.saveBtnText}>Save Documents</Text>
+                        : <Text style={styles.saveBtnText}>
+                            {Object.values(existingUrls).some(Boolean) ? "Update Documents" : "Save Documents"}
+                        </Text>
                     }
                 </Pressable>
 

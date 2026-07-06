@@ -228,14 +228,65 @@ export default function PropertyDetailSheet({
 
   const amenitiesList = normalizeAmenities(item);
   const followUps = normalizeFollowUps(item);
-  const propertySubtype = formatTextValue(firstValue(item, [
-    "property_sub_type",
-    "property_subtype",
-    "property_subtype_name",
-    "sub_type",
-    "subtype",
-    "property_type",
-  ]));
+  
+  // Get category to determine if residential or commercial
+  const category = String(firstValue(item, ["category", "type", "property_category"]) || "").toLowerCase();
+  const isResidential = category.includes("residential");
+  
+  // For residential: show BHK type, for commercial: show property type
+  const getPropertySubtype = () => {
+    if (isResidential) {
+      // Check for BHK fields
+      const bhkType = firstValue(item, [
+        "bhk_type",
+        "bhkType",
+        "kind_of_property",
+        "kindOfProperty",
+        "bedrooms"
+      ]);
+      
+      console.log('🏠 [PropertyDetailSheet] Residential property BHK data:', {
+        category,
+        bhkType,
+        bhk_type: item.bhk_type,
+        kind_of_property: item.kind_of_property,
+        bedrooms: item.bedrooms
+      });
+      
+      if (bhkType) {
+        const bhkStr = String(bhkType).toLowerCase();
+        // If already formatted as "3_bhk" or "3 bhk"
+        if (bhkStr.includes("bhk")) {
+          return formatTextValue(bhkType);
+        }
+        // If it's just a number like "3" or 3
+        const num = parseInt(bhkType);
+        if (!isNaN(num)) {
+          return num >= 5 ? "5+ BHK" : `${num} BHK`;
+        }
+      }
+    } else {
+      console.log('🏢 [PropertyDetailSheet] Commercial property type data:', {
+        category,
+        property_sub_type: item.property_sub_type,
+        sub_type: item.sub_type,
+        property_type: item.property_type
+      });
+    }
+    
+    // For commercial or if BHK not found, show property type/subtype
+    return formatTextValue(firstValue(item, [
+      "property_sub_type",
+      "property_subtype",
+      "property_subtype_name",
+      "sub_type",
+      "subtype",
+      "property_type",
+    ]));
+  };
+  
+  const propertySubtype = getPropertySubtype();
+  
   const reraStatus = formatReraStatus(firstValue(item, [
     "rera_status",
     "reraStatus",
@@ -430,7 +481,7 @@ export default function PropertyDetailSheet({
               <View className="mx-5 mb-2">
                 <View className="flex-row items-center justify-between mb-2">
                   <View>
-                    <Text className="text-[12px] font-manrope-bold text-gray-500 uppercase">{item.category || "Apartment"}</Text>
+                    <Text className="text-[12px] font-manrope-bold text-gray-500 uppercase">{propertySubtype || item.category || "Property"}</Text>
                     <Text className="text-[16px] font-manrope-extrabold text-[#0F172A]">{item.title || item.name || 'Property'}</Text>
                     <Text className="text-[15px] font-manrope-bold text-[#4A43EC] mt-0.5">{priceFormatted}</Text>
                   </View>

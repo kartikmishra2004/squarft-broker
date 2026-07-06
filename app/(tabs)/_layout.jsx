@@ -143,7 +143,7 @@ export default function TabsLayout() {
                     name="discount"
                     options={{
                         headerShown: false,
-                        tabBarLabel: "Earnings",
+                        tabBarLabel: "Commission",
                         tabBarIcon: ({ focused }) => <TabIcon name="discount" focused={focused} />,
                     }}
                 />

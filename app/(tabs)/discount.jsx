@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome6, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchCommissionHistory } from "../../store/slices/walletSlice";
+import CommissionFilterModal from "../../components/CommissionFilterModal";
 
 const formatDate = (dateStr) => {
     if (!dateStr) return "";
@@ -60,21 +61,72 @@ export default function Discount() {
     const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
     const { commissions, loading, error } = useSelector((state) => state.wallet);
     const [search, setSearch] = useState("");
+    const [filterModalVisible, setFilterModalVisible] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [dateFilter, setDateFilter] = useState('all');
 
     useEffect(() => {
         dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
     }, [dispatch]);
 
-    const filtered = useMemo(() => {
-        const query = search.trim().toLowerCase();
-        if (!query) return commissions || [];
+    const hasActiveFilters = statusFilter !== 'all' || dateFilter !== 'all';
 
-        return (commissions || []).filter((item) =>
-            (item.propertyName || "").toLowerCase().includes(query) ||
-            (item.propertyAddress || "").toLowerCase().includes(query) ||
-            String(item.amount || "").includes(query)
-        );
-    }, [commissions, search]);
+    const filtered = useMemo(() => {
+        if (!Array.isArray(commissions)) return [];
+        
+        let result = [...commissions];
+
+        // Search filter
+        if (search) {
+            const query = search.trim().toLowerCase();
+            result = result.filter((item) =>
+                (item.propertyName || "").toLowerCase().includes(query) ||
+                (item.propertyAddress || "").toLowerCase().includes(query) ||
+                String(item.amount || "").includes(query)
+            );
+        }
+
+        // Status filter
+        if (statusFilter !== 'all') {
+            result = result.filter(item => {
+                const itemStatus = (item.status || 'credit').toLowerCase();
+                // Map 'paid' filter to 'credit' status in data
+                if (statusFilter === 'paid') {
+                    return itemStatus === 'credit' || itemStatus === 'paid' || itemStatus === 'completed';
+                }
+                return itemStatus === statusFilter.toLowerCase();
+            });
+        }
+
+        // Date filter
+        if (dateFilter !== 'all') {
+            const now = new Date();
+            const cutoffDate = new Date();
+            
+            if (dateFilter === 'month') {
+                cutoffDate.setMonth(now.getMonth() - 1);
+            } else if (dateFilter === '3months') {
+                cutoffDate.setMonth(now.getMonth() - 3);
+            } else if (dateFilter === '6months') {
+                cutoffDate.setMonth(now.getMonth() - 6);
+            }
+            
+            result = result.filter(item => {
+                if (!item.createdAt) return false;
+                const itemDate = new Date(item.createdAt);
+                return itemDate >= cutoffDate;
+            });
+        }
+
+        return result;
+    }, [commissions, search, statusFilter, dateFilter]);
+
+    const handleApplyFilters = (filters) => {
+        console.log('📊 [discount.jsx] Filters applied:', filters);
+        setStatusFilter(filters.status);
+        setDateFilter(filters.dateFilter);
+        setFilterModalVisible(false);
+    };
 
     const retry = () => {
         dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
@@ -111,10 +163,29 @@ export default function Discount() {
                         onChangeText={setSearch}
                     />
                 </View>
-                <TouchableOpacity className="w-[44px] h-[44px] bg-[#EBF1FF] rounded-xl items-center justify-center">
+                <TouchableOpacity 
+                    className="w-[44px] h-[44px] bg-[#EBF1FF] rounded-xl items-center justify-center relative"
+                    onPress={() => {
+                        console.log('🎯 [discount.jsx] Filter button pressed');
+                        setFilterModalVisible(true);
+                    }}
+                    activeOpacity={0.7}
+                >
                     <MaterialCommunityIcons name="filter-variant" size={22} color="#4A43EC" />
+                    {hasActiveFilters && (
+                        <View className="absolute top-1 right-1 w-2 h-2 bg-[#FF3B30] rounded-full" />
+                    )}
                 </TouchableOpacity>
             </View>
+
+            {/* Filter Modal */}
+            <CommissionFilterModal
+                visible={filterModalVisible}
+                onClose={() => setFilterModalVisible(false)}
+                onApplyFilters={handleApplyFilters}
+                initialStatus={statusFilter}
+                initialDateFilter={dateFilter}
+            />
 
             {loading ? (
                 <View className="flex-1 items-center justify-center">

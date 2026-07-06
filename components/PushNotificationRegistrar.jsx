@@ -102,15 +102,18 @@ export default function PushNotificationRegistrar() {
 
         const responseSubscription = Notifications.addNotificationResponseReceivedListener(handleNotificationTap);
 
-        Notifications.getLastNotificationResponseAsync()
-            .then((response) => {
-                if (response) handleNotificationTap(response);
-            })
-            .catch((err) => {
-                console.log('[PushNotificationRegistrar] Last notification response unavailable', {
-                    message: err?.message || String(err),
-                });
-            });
+        // 🔧 FIX: Don't handle last notification response on app reload
+        // This was causing notification routes to flash before splash screen
+        // Only active tap gestures should trigger navigation
+        // Notifications.getLastNotificationResponseAsync()
+        //     .then((response) => {
+        //         if (response) handleNotificationTap(response);
+        //     })
+        //     .catch((err) => {
+        //         console.log('[PushNotificationRegistrar] Last notification response unavailable', {
+        //             message: err?.message || String(err),
+        //         });
+        //     });
 
         return () => {
             receivedSubscription.remove();
