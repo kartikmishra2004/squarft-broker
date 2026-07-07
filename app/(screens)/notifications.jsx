@@ -98,17 +98,9 @@ export default function Notifications() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 100 }}
         >
           {notifications.map((item) => (
-            <Pressable
+            <View
               key={item.id}
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.7 : 1,
-                transform: [{ scale: pressed ? 0.98 : 1 }]
-              })}
               className="flex-row mb-6 relative"
-              onPress={() => {
-                dispatch(markAsWatched(item.id));
-                router.push(resolveNotificationRoute(item.metadata));
-              }}
             >
               {getIcon(item.type)}
               <View className="ml-4 flex-1">
@@ -125,7 +117,7 @@ export default function Notifications() {
               {!item.watched && (
                 <View className="absolute top-1 right-0 w-2 h-2 bg-[#4A43EC] rounded-full" />
               )}
-            </Pressable>
+            </View>
           ))}
         </ScrollView>
       )}

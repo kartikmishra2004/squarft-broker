@@ -41,7 +41,6 @@ const formatIndianEarningAmount = (amount) => {
   return numericAmount.toLocaleString("en-IN");
 };
 
-// Property type categories - matching FilterModal structure
 const propertyCategories = [
   {
     id: "residential",
@@ -69,8 +68,8 @@ const propertyCategories = [
 
 export default function Home() {
   const [activeFilter, setActiveFilter] = useState("SELL");
-  const [selectedCategory, setSelectedCategory] = useState(null); // null, "residential", or "commercial"
-  const [selectedPropertyType, setSelectedPropertyType] = useState(null); // Single selection
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedPropertyType, setSelectedPropertyType] = useState(null);
   
   const dispatch = useDispatch();
   const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
@@ -92,14 +91,12 @@ export default function Home() {
     { label: "Rejected",         count: brokerStats?.rejected         ?? 0 },
   ];
 
-  // Get subtypes based on selected category
   const currentSubTypes = useMemo(() => {
     if (!selectedCategory) return [];
     const category = propertyCategories.find(c => c.id === selectedCategory);
     return category?.subTypes || [];
   }, [selectedCategory]);
   
-  // Count shortlisted properties for the selected property type
   const shortlistedCount = useMemo(() => {
     return shortlistedProperties.length;
   }, [shortlistedProperties]);
@@ -146,42 +143,29 @@ export default function Home() {
     }
   };
   
-  // Handle category selection (Residential/Commercial)
   const handleCategoryPress = (categoryId) => {
     if (selectedCategory === categoryId) {
-      // Deselect if clicking the same category
       setSelectedCategory(null);
       setSelectedPropertyType(null);
     } else {
-      // Select new category and reset property type
       setSelectedCategory(categoryId);
       setSelectedPropertyType(null);
     }
   };
   
-  // Handle property type selection (single selection only)
   const handlePropertyTypePress = (typeId) => {
     setSelectedPropertyType(typeId);
     
-    // Fetch shortlisted properties for this category and type
     if (selectedCategory && typeId) {
-      console.log('🔍 [Home] Fetching shortlisted properties:', {
-        category: selectedCategory,
-        property_type: typeId
-      });
-      
       dispatch(fetchShortlistedProperties({
         category: selectedCategory,
         property_type: typeId
       }));
     }
     
-    // Navigate to property-type screen with the selected type
-    router.push({ pathname: "/property-type", params: { typeId,
-        category: selectedCategory } });
+    router.push({ pathname: "/property-type", params: { typeId, category: selectedCategory } });
   };
 
-  // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return "Recently joined";
     const date = new Date(dateString);
@@ -200,90 +184,118 @@ export default function Home() {
         backgroundColor="transparent"
         barStyle="light-content"
       />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }} bounces={false}>
-        <View
-          style={{ paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 20 : 70 }}
-          className="bg-[#4A43EC] px-6 pb-[80px]"
-        >
-          <View className="flex-row justify-between items-center">
-            <View className="flex-row items-center gap-3">
-              {avatarUrl ? (
-                <Image
-                  source={{ uri: avatarUrl }}
-                  className="w-14 h-14 rounded-full border border-white"
-                />
-              ) : (
-                <View className="w-14 h-14 rounded-full border border-white bg-[#5B54ED] items-center justify-center">
-                  <Text className="text-white text-[20px] font-lato-bold">
-                    {displayName.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <View>
-                <View className="flex-row items-center gap-1">
-                  <Text className="text-white text-lg font-lato-bold">
-                    {displayName}
-                  </Text>
-                  <MaterialCommunityIcons
-                    name="check-circle"
-                    size={16}
-                    color="#3AFF08"
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 160 }} 
+        bounces={false}
+        className="bg-white"
+      >
+        
+        {/* 🔵 COHESIVE NATIVE BLUE DECK BLOCK (Houses top profile element layers perfectly) */}
+        <View style={{ backgroundColor: '#362ddc', position: 'relative' }}>
+          
+          {/* User Profile Info Layer */}
+          <View
+            style={{ paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 20 : 70 }}
+            className="px-6 pb-[75px]"
+          >
+            <View className="flex-row justify-between items-center">
+              <View className="flex-row items-center gap-3">
+                {avatarUrl ? (
+                  <Image
+                    source={{ uri: avatarUrl }}
+                    className="w-14 h-14 rounded-full border border-white"
                   />
+                ) : (
+                  <View className="w-14 h-14 rounded-full border border-white bg-[#5B54ED] items-center justify-center">
+                    <Text className="text-white text-[20px] font-lato-bold">
+                      {displayName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <View>
+                  <View className="flex-row items-center gap-1">
+                    <Text className="text-white text-lg font-lato-bold">
+                      {displayName}
+                    </Text>
+                    <MaterialCommunityIcons name="check-circle" size={16} color="#3AFF08" />
+                  </View>
+                  <Text className="text-xs text-white/70 mt-0.5">{displayDate}</Text>
                 </View>
-                <Text className="text-xs text-white/70 mt-0.5">{displayDate}</Text>
+              </View>
+              
+              <View className="flex-row items-center gap-3">
+                <Pressable className="p-1" onPress={() => router.push("/(screens)/wallet")}>
+                  <MaterialCommunityIcons name="wallet-outline" size={24} color="white" />
+                </Pressable>
+                <Pressable className="p-1 relative" onPress={() => router.push("/notifications")}>
+                  <Ionicons name="notifications" size={24} color="white" />
+                  {unwatchedCount > 0 ? (
+                    <View className="absolute top-0 right-0 bg-[#FF3B30] min-w-[14px] h-[14px] rounded-full items-center justify-center border border-white">
+                      <Text className="text-white text-[8px] font-manrope-bold">{unwatchedCount}</Text>
+                    </View>
+                  ) : null}
+                </Pressable>
               </View>
             </View>
-            <View className="flex-row items-center gap-3">
-              <Pressable 
-                className="p-1"
-                onPress={() => router.push("/(screens)/wallet")}
-              >
-                <MaterialCommunityIcons name="wallet-outline" size={24} color="white" />
-              </Pressable>
-              <Pressable
-                className="p-1 relative"
-                onPress={() => router.push("/notifications")}
-              >
-                <Ionicons name="notifications" size={24} color="white" />
-                {unwatchedCount > 0 ? (
-                  <View className="absolute top-0 right-0 bg-[#FF3B30] min-w-[14px] h-[14px] rounded-full items-center justify-center border border-white">
-                    <Text className="text-white text-[8px] font-manrope-bold">{unwatchedCount}</Text>
-                  </View>
-                ) : null}
-              </Pressable>
+          </View>
+
+          {/* 📊 FLOATING MATRIX SUB-DECK BAR (Overlayed via calculated margin offsets natively) */}
+          <View
+            className="bg-white rounded-[24px] p-[12px] mx-[16px] shadow-xl shadow-black/10"
+            style={{ 
+              position: 'absolute',
+              bottom: -105, // Standard anchor pushes exactly half the element below the blue background barrier
+              left: 0,
+              right: 0,
+              zIndex: 10,
+              elevation: 8 
+            }}
+          >
+            <View className="flex-row justify-between gap-2.5">
+              {stats.map((s, i) => (
+                <View key={i} className="flex-1 bg-[#F4F7FF] rounded-xl py-3.5 items-center justify-center border border-[#EDF2F7]">
+                  <Text className="text-base text-[#1A1A1A] font-manrope-bold">{s.count}</Text>
+                  <Text className="text-[9px] mt-0.5 text-gray-500 text-center font-manrope-semibold">{s.label}</Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>
 
-        {/* White Stats Card */}
-        <View
-          className="bg-white rounded-[30px] p-[16px] -mt-16 mx-[10px] shadow-lg shadow-black/10"
-          style={{ elevation: 8 }}
-        >
-          <View className="flex-row justify-between gap-3 mb-5">
-            {stats.map((s, i) => (
-              <View key={i} className="flex-1 bg-[#F4F7FF] rounded-xl py-3 items-center justify-center">
-                <Text className="text-base text-[#1a1a1a] font-lato-bold">
-                  {s.count}
-                </Text>
-                <Text className="text-[9px] mt-1 text-gray-500 text-center font-lato-semibold">
-                  {s.label}
-                </Text>
-              </View>
-            ))}
-          </View>
+        {/* 🎞️ NATIVE GRAPHIC MARKETING BANNER SLIDER (Rendered inside natural linear stream to eliminate grey rendering traps) */}
+        <View style={{ backgroundColor: '#3d34e5ff', paddingTop: 110, paddingBottom: 9}}>
+          <Image
+            source={require("../../assets/images/banner2.png")}
+            style={{ width: '100%', height: 175 }}
+            resizeMode="cover"
+          />
+        </View>
 
-          <View className="flex-row gap-3">
+        {/* 🏛️ CLEAN LOWER MAIN WHITE CONTENT SECTION */}
+        <View 
+          style={{ 
+            paddingTop: 20, 
+            backgroundColor: '#ffffff', 
+            borderTopLeftRadius: 32,
+            borderTopRightRadius: 32,
+            marginTop: -20, // Clean overlap style match with the image above
+            zIndex: 100,
+          }}
+          className="px-4"
+        >
+          {/* Action Button Switch row */}
+          <View className="flex-row gap-3 mb-6">
             {mainTabs.map((f) => {
               const isActive = activeFilter === f;
               return (
                 <Pressable
                   key={f}
                   onPress={() => handleFilterPress(f)}
-                  className={`flex-1 h-10 rounded-xl justify-center items-center border ${isActive ? 'bg-[#4A43EC] border-[#4A43EC]' : 'bg-white border-[#F0F0F0]'}`}
+                  className={`flex-1 h-11 rounded-full justify-center items-center border shadow-xs ${isActive ? 'bg-[#4A43EC] border-[#4A43EC]' : 'bg-white border-[#E5E7EB]'}`}
                 >
-                  <Text className={`text-[13px] font-lato-bold ${isActive ? 'text-white' : 'text-gray-500'}`}>
-                    {f}
+                  <Text className={`text-[13px] font-lato-bold ${isActive ? 'text-white' : 'text-gray-600'}`}>
+                    {f === "SELL" ? "☰   Resale" : f}
                   </Text>
                 </Pressable>
               );
@@ -291,60 +303,55 @@ export default function Home() {
             <Pressable
               key={buyFilter}
               onPress={() => handleFilterPress(buyFilter)}
-              className="flex-1 h-10 bg-white rounded-xl justify-center items-center border border-[#F0F0F0]"
+              className="flex-1 h-11 bg-white rounded-full justify-center items-center border border-[#E5E7EB] shadow-xs"
             >
-              <Text className="text-[13px] text-gray-500 font-lato-bold">
-                {buyFilter}
-              </Text>
+              <Text className="text-[13px] text-gray-600 font-lato-bold">＋ {buyFilter}</Text>
             </Pressable>
           </View>
-        </View>
 
-        <View className="px-[10px] pt-[15px]">
-          {/* Branch channel partner earning summary */}
-          <View className="mb-6 px-2">
-            <View className="h-[100px] w-full overflow-hidden rounded-[20px] bg-white">
-              <View className="mx-0 mt-0 h-[25px] rounded-t-[20px] bg-[#C8B8FF]" />
-              <View className="flex-1 items-center justify-center pb-2">
-                <Text className="text-center text-[16px] font-lato-bold text-[#1F2937]">
-                  {branchEarningSummary.channelPartnerCount} Channel Partner{Number(branchEarningSummary.channelPartnerCount) === 1 ? "" : "s"} earn upto{" "}
-                  <Text className="text-[#11B980]">{branchEarningSummary.monthlyEarningLabel}</Text>
-                </Text>
-                <Text className="mt-1 text-center text-[13px] font-lato-semibold text-[#374151]">
-                  {branchEarningSummary.branchName ? `In ${branchEarningSummary.branchName}` : "In Your Area"}
-                </Text>
+          {/* Branch channel partner earning summary banner layout */}
+          <View className="mb-6">
+            <View className="w-full overflow-hidden rounded-[20px] bg-white border border-[#E5E7EB] shadow-xs">
+              <View className="h-[6px] bg-[#C8B8FF]" />
+              <View className="flex-row items-center py-5 px-4 gap-3">
+                <Image
+                  source={require("../../assets/images/wallet.png")} 
+                  style={{ width: 44, height: 44 }}
+                  resizeMode="contain"
+                />
+                <View className="flex-1">
+                  <Text className="text-[14px] font-lato-bold text-[#1F2937]">
+                    {branchEarningSummary.channelPartnerCount} Channel Partner{Number(branchEarningSummary.channelPartnerCount) === 1 ? "" : "s"} earn upto{" "}
+                    <Text className="text-[#11B980] font-lato-black">{branchEarningSummary.monthlyEarningLabel}</Text>
+                  </Text>
+                  <Text className="mt-0.5 text-[11px] font-lato-semibold text-gray-400">
+                    {branchEarningSummary.branchName ? `In ${branchEarningSummary.branchName}` : "In Your Area"}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
 
-          {/* Property Type Selection - New Design */}
+          {/* Property Type Grid Section Container */}
           <View className="mb-6">
-            {/* Section Header */}
-            <View className="px-2 mb-4">
-              <Text className="text-[15px] text-black font-lato-bold tracking-wider">
-                PROPERTY TYPES
-              </Text>
+            <View className="mb-4">
+              <Text className="text-[14px] text-gray-800 font-lato-bold tracking-wider uppercase">Property Type</Text>
             </View>
 
-            {/* Category Selection (Residential/Commercial) */}
-            <View className="flex-row gap-3 px-2 mb-4">
+            <View className="flex-row gap-3 mb-4">
               {propertyCategories.map((category) => (
                 <Pressable
                   key={category.id}
                   onPress={() => handleCategoryPress(category.id)}
                   style={{ flex: 1 }}
-                  className={`border-2 rounded-xl p-4 items-center ${
+                  className={`border-2 rounded-2xl p-4 items-center shadow-xs ${
                     selectedCategory === category.id 
                       ? 'bg-[#F5F3FF] border-[#7C3AED]' 
                       : 'bg-white border-[#E5E7EB]'
                   }`}
                 >
                   <View className="relative w-[60px] h-[60px] mb-2 items-center justify-center">
-                    <Image
-                      source={category.image}
-                      style={{ width: 60, height: 60 }}
-                      resizeMode="contain"
-                    />
+                    <Image source={category.image} style={{ width: 60, height: 60 }} resizeMode="contain" />
                     {category.cloudImage && (
                       <Image
                         source={category.cloudImage}
@@ -353,73 +360,49 @@ export default function Home() {
                       />
                     )}
                   </View>
-                  <Text 
-                    className={`text-[14px] font-lato-bold ${
-                      selectedCategory === category.id ? 'text-[#7C3AED]' : 'text-[#6B7280]'
-                    }`}
-                  >
+                  <Text className={`text-[14px] font-lato-bold ${selectedCategory === category.id ? 'text-[#7C3AED]' : 'text-[#6B7280]'}`}>
                     {category.label}
                   </Text>
                 </Pressable>
               ))}
             </View>
 
-            {/* Property Sub-Types Grid (shows when category is selected) */}
+            {/* Nested Sub-categories grid rendering */}
             {selectedCategory && currentSubTypes.length > 0 && (
-              <View className="flex-row flex-wrap justify-between px-2 mt-2">
+              <View className="flex-row flex-wrap justify-between mt-2">
                 {currentSubTypes.map((subType) => (
                   <Pressable
                     key={subType.id}
                     onPress={() => handlePropertyTypePress(subType.id)}
-                    style={{ 
-                      width: (width - 52) / 2,
-                      marginBottom: 12
-                    }}
-                    className={`border-2 rounded-xl p-4 items-center ${
-                      selectedPropertyType === subType.id
-                        ? 'bg-[#F5F3FF] border-[#7C3AED]'
-                        : 'bg-white border-[#E5E7EB]'
+                    style={{ width: (width - 48) / 4, marginBottom: 12 }}
+                    className={`border-2 rounded-xl p-2 items-center justify-center ${
+                      selectedPropertyType === subType.id ? 'bg-[#F5F3FF] border-[#7C3AED]' : 'bg-white border-[#E5E7EB]'
                     }`}
                   >
-                    <Image
-                      source={subType.image}
-                      style={{ width: 50, height: 50, marginBottom: 8 }}
-                      resizeMode="contain"
-                    />
+                    <Image source={subType.image} style={{ width: 36, height: 36, marginBottom: 4 }} resizeMode="contain" />
                     <Text 
-                      className={`text-[14px] font-lato-bold ${
-                        selectedPropertyType === subType.id ? 'text-[#7C3AED]' : 'text-[#6B7280]'
-                      }`}
+                      className={`text-[11px] font-lato-bold text-center ${selectedPropertyType === subType.id ? 'text-[#7C3AED]' : 'text-[#6B7280]'}`}
+                      numberOfLines={1}
                     >
                       {subType.label}
                     </Text>
                     
-                    {/* Show count for selected property type */}
                     {selectedPropertyType === subType.id && shortlistedCount > 0 && (
-                      <View className="mt-2 bg-[#7C3AED] px-2 py-1 rounded-full">
-                        <Text className="text-white text-[10px] font-lato-bold">
-                          {shortlistedCount} {shortlistedCount === 1 ? 'property' : 'properties'}
-                        </Text>
+                      <View className="mt-1 bg-[#7C3AED] px-1.5 py-0.5 rounded-full">
+                        <Text className="text-white text-[8px] font-lato-bold">{shortlistedCount}</Text>
                       </View>
                     )}
                     
-                    {/* Show loading indicator */}
                     {selectedPropertyType === subType.id && shortlistedLoading && (
-                      <View className="mt-2">
-                        <Text className="text-[#7C3AED] text-[10px] font-lato-regular">
-                          Loading...
-                        </Text>
-                      </View>
+                      <View className="mt-1"><Text className="text-[#7C3AED] text-[8px] font-lato-regular">...</Text></View>
                     )}
                   </Pressable>
                 ))}
               </View>
             )}
           </View>
-
-       
-   
         </View>
+
       </ScrollView>
     </View>
   );
