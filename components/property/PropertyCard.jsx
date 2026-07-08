@@ -48,10 +48,10 @@ const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
             onPress={() => onPress?.(item)}
         >
             <View
-                className="w-full border border-gray-100 rounded-[30px]"
+                className="w-full border border-gray-200 rounded-[30px]"
                 style={{
                     backgroundColor: 'white',
-                    elevation: 2,
+                   
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: 6 },
                     shadowOpacity: 0.1,

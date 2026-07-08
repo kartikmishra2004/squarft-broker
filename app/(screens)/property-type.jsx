@@ -16,7 +16,6 @@ import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { propertyTypes } from "../../data/listingData";
 import { upcomingProjectsData } from "../../data/properties";
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
-import Slider from "@react-native-community/slider";
 import PremiumRangeSlider from "../../components/PremiumRangeSlider";
 import PropertyCard from "../../components/property/PropertyCard";
 import CategoryTile from "../../components/property/CategoryTile";
@@ -25,43 +24,42 @@ import { fetchShortlistedProperties } from "../../store/slices/propertySlice";
 import { fetchPropertyDetails, fetchProjectDetails } from "../../store/slices/myAddedSlice";
 
 export default function PropertyType() {
-    // ✅ FIXED: Unwrapped both typeId and category routing parameters forwarded from Home screen
     const { typeId, category } = useLocalSearchParams();
     const dispatch = useDispatch();
     const [view, setView] = useState(typeId ? "list" : "types");
     const [selectedTypeId, setSelectedTypeId] = useState(typeId || null);
     const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState("approved");
 
-    // ✅ FIXED: Redirected state selector properties to pull directly from your real shortlisted arrays
+    // Real state selectors
     const properties = useSelector(state => state.property.shortlistedProperties || []);
     const loading = useSelector(state => state.property.shortlistedLoading || false);
-  
     const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
     const router = useRouter();
 
-    const [priceRange, setPriceRange] = useState(null);
-    const [facilityFilter, setFacilityFilter] = useState(null);
+    // Dynamic Extrema Calculator
+    const calculatedPriceMax = useMemo(() => {
+        if (!properties || properties.length === 0) return 50000000; // 5Cr Default fallback if empty
+        const maxFound = properties.reduce((max, p) => {
+            const price = p.base_price || p.min_price || p.price_from || p.max_price || p.price_to || 0;
+            return price > max ? price : max;
+        }, 0);
+        return maxFound > 0 ? maxFound : 50000000;
+    }, [properties]);
 
-    const [tempPriceRange, setTempPriceRange] = useState(null);
-    const [tempFacilityFilter, setTempFacilityFilter] = useState(null);
+    // Local frontend filter states wrapped inside an unified layout boundaries track object
+    const [priceRange, setPriceRange] = useState({ min: 0, max: 50000000 });
+    const [tempPriceRange, setTempPriceRange] = useState({ min: 0, max: 50000000 });
 
-    const bottomSheetRef = useRef(null);
-    const snapPoints = useMemo(() => ["65%"], []);
-    const [selectedProperty, setSelectedProperty] = useState(null);
-    const [propertySheetVisible, setPropertySheetVisible] = useState(false);
-    const [propertyDetailLoading, setPropertyDetailLoading] = useState(false);
-    const [propertyDetailError, setPropertyDetailError] = useState(null);
-    const detailRequestRef = useRef(0);
-
-    // ✅ FIXED: Wired up your real fetch thunk to handle category and property_type filters cleanly
+    // Synchronize default value states when collection finishes loading from network
     useEffect(() => {
-        const activeCategory = category || "residential"; // Safe fallback query criteria
+        setPriceRange({ min: 0, max: calculatedPriceMax });
+        setTempPriceRange({ min: 0, max: calculatedPriceMax });
+    }, [calculatedPriceMax]);
+
+    // Fetch initial list data payload
+    useEffect(() => {
+        const activeCategory = category || "residential";
         if (selectedTypeId && view === "list") {
-            console.log('🔍 [PropertyType Screen] Requesting network collection payload for:', {
-                category: activeCategory,
-                property_type: selectedTypeId
-            });
             dispatch(fetchShortlistedProperties({
                 category: activeCategory,
                 property_type: selectedTypeId
@@ -77,30 +75,18 @@ export default function PropertyType() {
     }, [typeId]);
 
     const handleOpenFilter = () => {
-        setTempPriceRange(priceRange);
-        setTempFacilityFilter(facilityFilter);
         bottomSheetRef.current?.expand();
     };
 
     const handleCloseFilter = () => bottomSheetRef.current?.close();
 
     const handleApplyFilters = () => {
-        console.log('🎯 [PropertyType] Applying filters:', {
-            tempPriceRange,
-            beforeSet_priceRange: priceRange
-        });
         setPriceRange(tempPriceRange);
-        setFacilityFilter(tempFacilityFilter);
-        console.log('✅ [PropertyType] Filters applied:', {
-            priceRange: tempPriceRange,
-            facilityFilter: tempFacilityFilter
-        });
         handleCloseFilter();
     };
 
     const handleResetFilters = () => {
-        setTempPriceRange(null);
-        setTempFacilityFilter(null);
+        setTempPriceRange({ min: 0, max: calculatedPriceMax });
     };
 
     const handleTypePress = (id) => {
@@ -116,12 +102,6 @@ export default function PropertyType() {
         const isProperty = item?.item_type === 'property';
         const fetchAction = isProperty ? fetchPropertyDetails : fetchProjectDetails;
 
-        console.log('🏠 [PropertyType] Fetching details for:', {
-            id: item.id,
-            type: isProperty ? 'property' : 'project',
-            item_type: item.item_type
-        });
-
         setSelectedProperty(item);
         setPropertySheetVisible(true);
         setPropertyDetailLoading(true);
@@ -131,7 +111,6 @@ export default function PropertyType() {
             .unwrap()
             .then((details) => {
                 if (detailRequestRef.current !== requestId) return;
-                console.log('✅ [PropertyType] Details fetched:', details);
                 setSelectedProperty({
                     ...item,
                     ...details,
@@ -140,7 +119,6 @@ export default function PropertyType() {
             })
             .catch((error) => {
                 if (detailRequestRef.current !== requestId) return;
-                console.error('❌ [PropertyType] Failed to fetch details:', error);
                 const message = typeof error === 'string' ? error : error?.message || 'Failed to load property details';
                 setPropertyDetailError(message);
             })
@@ -158,6 +136,14 @@ export default function PropertyType() {
         setPropertyDetailError(null);
     }, []);
 
+    const bottomSheetRef = useRef(null);
+    const snapPoints = useMemo(() => ["65%"], []);
+    const [selectedProperty, setSelectedProperty] = useState(null);
+    const [propertySheetVisible, setPropertySheetVisible] = useState(false);
+    const [propertyDetailLoading, setPropertyDetailLoading] = useState(false);
+    const [propertyDetailError, setPropertyDetailError] = useState(null);
+    const detailRequestRef = useRef(0);
+
     const currentTypeLabel = useMemo(() => {
         const predefined = propertyTypes.find(t => t.id === selectedTypeId);
         if (predefined) return predefined.label;
@@ -165,52 +151,22 @@ export default function PropertyType() {
         return selectedTypeId.replace(/(\d+)([a-z]+)/i, '$1 $2').charAt(0).toUpperCase() + selectedTypeId.slice(1).replace(/(\d+)([a-z]+)/i, '$1 $2');
     }, [selectedTypeId]);
 
+    // Local Native Frontend Filter Pipeline
     const filteredProperties = useMemo(() => {
         if (!properties || properties.length === 0) return [];
         
-        console.log('🔍 [PropertyType] Filtering with:', {
-            searchQuery,
-            priceRange,
-            totalProperties: properties.length
-        });
-        
         return properties.filter(p => {
-            // Search filter
             const matchSearch = searchQuery ? 
                 (p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) : true;
             
-            // Price filter - get the property price from various possible fields
-            // Priority: base_price > min_price > price_from > max_price > price_to
             const itemPrice = p.base_price || p.min_price || p.price_from || p.max_price || p.price_to || 0;
             
-            // If priceRange is set (not null), filter properties where price is <= priceRange
-            // If priceRange is null (no filter applied), show all properties
-            const matchPrice = priceRange !== null && priceRange !== undefined ? itemPrice <= priceRange : true;
+            // ✅ FIXED: Evaluates item values natively by wrapping bounds checking comprehensively inside both limits
+            const matchPrice = itemPrice >= priceRange.min && itemPrice <= priceRange.max;
             
-            const match = matchSearch && matchPrice;
-            
-            // Debug logging for filtered properties
-            if (!match && priceRange) {
-                console.log('🚫 [PropertyType] Filtered out:', {
-                    title: p.title,
-                    base_price: p.base_price,
-                    min_price: p.min_price,
-                    itemPrice,
-                    priceRange,
-                    matchPrice,
-                    reason: !matchPrice ? 'price too high' : 'search mismatch'
-                });
-            }
-            
-            return match;
+            return matchSearch && matchPrice;
         });
     }, [properties, searchQuery, priceRange]);
-
-    const currentProperties = {
-        filtered: filteredProperties,
-        total: properties?.length || 0,
-        statusCount: filteredProperties.length
-    };
 
     const renderBackdrop = useCallback(
         (props) => (
@@ -218,6 +174,13 @@ export default function PropertyType() {
         ),
         []
     );
+
+    const formatSliderLabel = (val) => {
+        if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
+        if (val >= 100000) return `₹${(val / 100000).toFixed(0)}L`;
+        if (val >= 1000) return `₹${(val / 1000).toFixed(0)}K`;
+        return `₹${val}`;
+    };
 
     if (view === "list") {
         return (
@@ -232,9 +195,7 @@ export default function PropertyType() {
                         } else {
                             setView("types");
                             setSearchQuery("");
-                            setStatusFilter("approved");
-                            setPriceRange(null);
-                            setFacilityFilter(null);
+                            setPriceRange({ min: 0, max: calculatedPriceMax });
                         }
                     }} className="p-1">
                         <Ionicons name="arrow-back" size={22} color="black" />
@@ -271,7 +232,7 @@ export default function PropertyType() {
                     </View>
 
                     <View className="flex-row items-center justify-between px-5 mt-8 mb-4">
-                        <Text className="text-sm text-black font-lato-bold">Listing Property ({currentProperties.filtered.length})</Text>
+                        <Text className="text-sm text-black font-lato-bold">Listing Property ({filteredProperties.length})</Text>
                     </View>
 
                     {loading ? (
@@ -281,13 +242,13 @@ export default function PropertyType() {
                         </View>
                     ) : (
                         <View className="flex-row flex-wrap px-2.5 justify-between">
-                            {currentProperties.filtered.map((item) => (
+                            {filteredProperties.map((item) => (
                                 <PropertyCard key={item.id} item={item} propertyTypeLabel={currentTypeLabel} onPress={handlePropertyPress} />
                             ))}
-                            {currentProperties.filtered.length === 0 && (
+                            {filteredProperties.length === 0 && (
                                 <View className="w-full items-center mt-20 px-8">
                                     <Text className="text-gray-400 font-lato-medium text-center text-xs">
-                                        No properties found for {currentTypeLabel}
+                                        No properties found matching criteria parameters
                                     </Text>
                                 </View>
                             )}
@@ -315,36 +276,41 @@ export default function PropertyType() {
 
                         <View className="mb-6">
                             <View className="flex-row justify-between items-center mb-10">
-                                <Text className="text-[13px] font-lato-bold">Price Range</Text>
+                                <Text className="text-[13px] font-lato-bold">Price Range Max</Text>
                                 <Text className="text-[13px] font-lato-bold text-[#4A43EC]">
-                                    {tempPriceRange ? `₹${(tempPriceRange / 1000).toFixed(0)}K` : 'Not Applied'}
+                                    {tempPriceRange.max !== null ? formatSliderLabel(tempPriceRange.max) : 'Not Applied'}
                                 </Text>
                             </View>
                             <View className="h-12 justify-center mb-4">
+                                {/* ✅ FIXED: Slider maps array indices safely to retain full multi-thumb continuous ideal dragging physics smoothly */}
                                 <PremiumRangeSlider
                                     min={0}
-                                    max={200000}
-                                    initialMin={0}
-                                    initialMax={tempPriceRange || 200000}
-                                    step={1000}
+                                    max={calculatedPriceMax}
+                                    initialMin={tempPriceRange.min}
+                                    initialMax={tempPriceRange.max}
+                                    step={calculatedPriceMax > 1000000 ? 50000 : 1000}
                                     onValuesChangeFinish={(values) => {
-                                        console.log('🎚️ [PropertyType] Slider values:', values, 'Taking values[1]:', values[1]);
-                                        setTempPriceRange(values[1]);
+                                        if (Array.isArray(values)) {
+                                            setTempPriceRange({
+                                                min: values[0],
+                                                max: values[1] !== undefined ? values[1] : values[0]
+                                            });
+                                        } else {
+                                            setTempPriceRange({ min: 0, max: values });
+                                        }
                                     }}
-                                    formatLabel={(val) => `₹${(val / 1000).toFixed(0)}K`}
+                                    formatLabel={formatSliderLabel}
                                     isSingleThumb={true}
                                 />
                             </View>
                             <View className="flex-row justify-between px-1">
-                                {[0, 50000, 100000, 150000, 200000].map(val => (
-                                    <Text key={val} className="text-[10px] text-gray-400 font-lato-medium">
-                                        ₹{val === 0 ? '0' : `${(val / 1000)}K`}
+                                {[0, calculatedPriceMax * 0.25, calculatedPriceMax * 0.5, calculatedPriceMax * 0.75, calculatedPriceMax].map((val, idx) => (
+                                    <Text key={idx} className="text-[10px] text-gray-400 font-lato-medium">
+                                        {formatSliderLabel(val)}
                                     </Text>
                                 ))}
                             </View>
                         </View>
-
-                     
 
                         <View className="flex-row gap-4 mt-auto">
                             <Pressable
@@ -388,7 +354,7 @@ export default function PropertyType() {
                 <Text className="text-[16px] text-black font-lato-bold">Property type</Text>
                 <Pressable
                     className="p-1 relative"
-                    onPress={() => router.push("/(screens)/notifications")}
+                    onPress={() => router.push("/notifications")}
                 >
                     <Ionicons name="notifications" size={22} color="black" />
                     {unwatchedCount > 0 ? (

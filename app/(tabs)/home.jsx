@@ -285,6 +285,7 @@ export default function Home() {
           className="px-4"
         >
           {/* Action Button Switch row */}
+     {/* Action Switch Tabs row */}
           <View className="flex-row gap-3 mb-6">
             {mainTabs.map((f) => {
               const isActive = activeFilter === f;
@@ -294,9 +295,23 @@ export default function Home() {
                   onPress={() => handleFilterPress(f)}
                   className={`flex-1 h-11 rounded-full justify-center items-center border shadow-xs ${isActive ? 'bg-[#4A43EC] border-[#4A43EC]' : 'bg-white border-[#E5E7EB]'}`}
                 >
-                  <Text className={`text-[13px] font-lato-bold ${isActive ? 'text-white' : 'text-gray-600'}`}>
-                    {f === "SELL" ? "☰   Resale" : f}
-                  </Text>
+                  {f === "SELL" ? (
+                    /* FIXED: Replaced plain text icon with native flex row icon asset mapping */
+                    <View className="flex-row items-center gap-1.5">
+                      <MaterialCommunityIcons 
+                        name="filter-variant" 
+                        size={18} 
+                        color={isActive ? "#FFFFFF" : "#4A43EC"} 
+                      />
+                      <Text className={`text-[13px] font-lato-bold ${isActive ? 'text-white' : 'text-gray-600'}`}>
+                        Resale
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text className={`text-[13px] font-lato-bold ${isActive ? 'text-white' : 'text-gray-600'}`}>
+                      {f}
+                    </Text>
+                  )}
                 </Pressable>
               );
             })}
