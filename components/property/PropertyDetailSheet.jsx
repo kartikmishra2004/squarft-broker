@@ -188,13 +188,36 @@ export default function PropertyDetailSheet({
   
   // For residential: show BHK type, for commercial: show property type
   const getPropertySubtype = () => {
+    // 🔍 DEBUG: Log what data we're working with
+    console.log('🏠 [PropertyDetailSheet] getPropertySubtype DEBUG:', {
+      isResidential,
+      bedrooms: item?.bedrooms,
+      kind_of_property: item?.kind_of_property,
+      property_subtype: item?.property_subtype,
+      sub_type: item?.sub_type,
+      item_keys: Object.keys(item || {})
+    });
+    
     if (isResidential) {
-      // Check for BHK fields
+      // ✅ UPDATED: Check bedrooms field first (new storage location)
+      const bedroomsCount = firstValue(item, ["bedrooms"]);
+      
+      console.log('🔍 [PropertyDetailSheet] bedroomsCount from firstValue:', bedroomsCount);
+      
+      if (bedroomsCount && !isNaN(bedroomsCount)) {
+        const num = parseInt(bedroomsCount);
+        const result = num >= 5 ? "5+ BHK" : `${num} BHK`;
+        console.log('✅ [PropertyDetailSheet] Returning BHK from bedrooms:', result);
+        return result;
+      }
+      
+      // Fallback: Check legacy kind_of_property field for backward compatibility
       const bhkType = firstValue(item, [
         "kind_of_property",
       
       ]);
       
+      console.log('🔍 [PropertyDetailSheet] bhkType from kind_of_property:', bhkType);
       
       if (bhkType) {
         const bhkStr = String(bhkType).toLowerCase();
@@ -211,9 +234,11 @@ export default function PropertyDetailSheet({
     } 
     
     // For commercial or if BHK not found, show property type/subtype
-    return formatTextValue(firstValue(item, [
+    const fallback = formatTextValue(firstValue(item, [
       "property_subtype",
     ]));
+    console.log('🔍 [PropertyDetailSheet] Returning fallback property_subtype:', fallback);
+    return fallback;
   };
   
   const propertySubtype = getPropertySubtype();

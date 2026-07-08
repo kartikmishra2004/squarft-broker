@@ -245,7 +245,7 @@ export default function Home() {
             className="bg-white rounded-[24px] p-[12px] mx-[16px] shadow-xl shadow-black/10"
             style={{ 
               position: 'absolute',
-              bottom: -105, // Standard anchor pushes exactly half the element below the blue background barrier
+              bottom: -40, // Standard anchor pushes exactly half the element below the blue background barrier
               left: 0,
               right: 0,
               zIndex: 10,
@@ -264,7 +264,7 @@ export default function Home() {
         </View>
 
         {/* 🎞️ NATIVE GRAPHIC MARKETING BANNER SLIDER (Rendered inside natural linear stream to eliminate grey rendering traps) */}
-        <View style={{ backgroundColor: '#3d34e5ff', paddingTop: 110, paddingBottom: 9}}>
+        <View style={{ backgroundColor: '#3d34e5ff', paddingTop:40, paddingBottom: 9}}>
           <Image
             source={require("../../assets/images/banner2.png")}
             style={{ width: '100%', height: 175 }}

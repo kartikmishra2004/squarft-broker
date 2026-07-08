@@ -931,7 +931,7 @@ export default function AddProject() {
                                             let bedrooms = null;
                                             
                                             if (selectedMainType === "residential" && showBhk) {
-                                                kindOfProperty = selectedBhk;
+                                                // For residential, don't set kind_of_property to BHK
                                                 // Extract bedroom number from BHK selection (e.g., "3_bhk" -> 3, "5_plus_bhk" -> 5)
                                                 const bhkMatch = selectedBhk.match(/^(\d+)/);
                                                 if (bhkMatch) {
@@ -958,7 +958,13 @@ export default function AddProject() {
                                             console.log('📤 [AddProject] Creating basic details with payload:', payload);
                                             await dispatch(createBasicDetails(payload)).unwrap();
                                             setCurrentStep(prev => prev + 1);
-                                        } catch (_) {}
+                                        } catch (error) {
+                                            console.error('❌ [AddProject] Create basic details error:', error);
+                                            Alert.alert(
+                                                "Error",
+                                                getErrorMessage(error)
+                                            );
+                                        }
                                     }}
                                 >
                                     <Text className="text-white text-sm font-lato-bold">Next</Text>

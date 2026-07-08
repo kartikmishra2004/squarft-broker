@@ -7,22 +7,27 @@ const authHeader = (token) => ({ Authorization: `Bearer ${token}` });
 // Step 1 — create property with basic details (FIXED TO MATCH BACKEND)
 export const createBasicDetails = createAsyncThunk(
     'project/createBasicDetails',
-    async ({ category, property_type, kind_of_property, listing_type }, { getState, rejectWithValue }) => {
+    async ({ category, property_type, kind_of_property, listing_type, bedrooms }, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
             
-            // BACKEND ACTUALLY EXPECTS: { property_type, property_subtype, listing_type, kind_of_property }
+            // BACKEND ACTUALLY EXPECTS: { property_type, property_subtype, listing_type, kind_of_property, bedrooms }
             // Backend uses these field names in the controller (line 837-879 of propertyController.js)
             const payload = {
                 property_type: category,                           // residential/commercial
                 property_subtype: property_type,                   // shop/showroom/office/plot/villa/apartment/rowhouse
                 listing_type: listing_type || 'buy',               // buy/rent
-                kind_of_property: kind_of_property                 // 1_bhk/2_bhk/ready/bare/coworking
+                kind_of_property: kind_of_property                 // ready/bare/coworking (not used for BHK)
             };
+            
+            // Add bedrooms for residential properties
+            if (bedrooms !== null && bedrooms !== undefined) {
+                payload.bedrooms = bedrooms;
+            }
             
             // COMPREHENSIVE LOGGING - DO NOT REMOVE
             console.log('=== Frontend createBasicDetails DEBUG ===');
-            console.log('Input params:', { category, property_type, kind_of_property, listing_type });
+            console.log('Input params:', { category, property_type, kind_of_property, listing_type, bedrooms });
             console.log('Mapped payload being sent:', JSON.stringify(payload));
             console.log('API Endpoint: POST /api/v1/broker/properties/basic-details');
             console.log('=========================================');
@@ -110,7 +115,8 @@ export const updatePropertyDetails = createAsyncThunk(
             //   tower_no, flat_no, state, khasra_no, property_age
             // }
             const payload = {
-                bedrooms: null,                                    // Will be set based on BHK in future
+                // ❌ DO NOT send bedrooms - it was already set in Step 1 (createBasicDetails)
+                // bedrooms was set based on BHK selection and should not be overwritten
                 bathrooms: null,                                   // Not collected yet
                 floors: null,                                      // Not collected yet
                 latitude: latitude !== undefined ? latitude : null,
