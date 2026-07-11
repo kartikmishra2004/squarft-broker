@@ -50,7 +50,7 @@ const CommissionHistoryScreen = () => {
                 const itemStatus = (item.status || 'credit').toLowerCase();
                 // Map 'paid' filter to 'credit' status in data
                 if (statusFilter === 'paid') {
-                    return itemStatus === 'credit' || itemStatus === 'paid' || itemStatus === 'completed';
+                    return  itemStatus === 'paid';
                 }
                 return itemStatus === statusFilter.toLowerCase();
             });
@@ -80,12 +80,12 @@ const CommissionHistoryScreen = () => {
     }, [searchText, commissions, statusFilter, dateFilter]);
 
     const handleOpenFilter = () => {
-        console.log('🎯🎯🎯 FILTER BUTTON PRESSED - Opening modal!');
+        console.log(' FILTER BUTTON PRESSED - Opening modal!');
         setFilterModalVisible(true);
     };
 
     const handleApplyFilters = (filters) => {
-        console.log('📊 [commission-history] Filters applied:', filters);
+        console.log(' [commission-history] Filters applied:', filters);
         setStatusFilter(filters.status);
         setDateFilter(filters.dateFilter);
         setFilterModalVisible(false);
@@ -180,36 +180,46 @@ const CommissionHistoryScreen = () => {
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 40 }}
                 >
-                    {filtered.map((item) => (
-                        <View
-                            key={item.id}
-                            className="flex-row items-center justify-between py-4 border-b border-gray-50"
-                        >
-                            <View className="flex-row items-center flex-1 mr-3">
-                                <View className="w-10 h-10 rounded-full bg-[#E8F9EE] items-center justify-center mr-3">
-                                    <MaterialCommunityIcons name="cash-plus" size={20} color="#22C55E" />
+                    {filtered.map((item) => {
+                        const rawStatus = String(item.status || 'CREDIT').trim().toLowerCase();
+                        const isPending = rawStatus === 'pending';
+
+                        return (
+                            <View
+                                key={item.id}
+                                className="flex-row items-center justify-between py-4 border-b border-gray-50"
+                            >
+                                <View className="flex-row items-center flex-1 mr-3">
+                                    <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${isPending ? 'bg-red-50' : 'bg-[#E8F9EE]'}`}>
+                                        <MaterialCommunityIcons 
+                                            name={isPending ? "cash-clock" : "cash-plus"} 
+                                            size={20} 
+                                            color={isPending ? "#ef8844ff" : "#22C55E"} 
+                                        />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-[13px] font-manrope-bold text-[#272727]" numberOfLines={1}>
+                                            {item.propertyName || 'Commission Earned'}
+                                        </Text>
+                                        <Text className="text-[10px] text-gray-400 font-manrope-medium mt-0.5">
+                                            {formatDate(item.createdAt)}
+                                        </Text>
+                                    </View>
                                 </View>
-                                <View className="flex-1">
-                                    <Text className="text-[13px] font-manrope-bold text-[#272727]" numberOfLines={1}>
-                                        {item.propertyName || 'Commission Earned'}
+                                <View className="items-end">
+                                    <Text className={`text-[14px] font-manrope-bold ${isPending ? 'text-[#EF4444]' : 'text-[#22C55E]'}`}>
+                                        {isPending ? '' : '+'}{formatAmount(item.amount)}
                                     </Text>
-                                    <Text className="text-[10px] text-gray-400 font-manrope-medium mt-0.5">
-                                        {formatDate(item.createdAt)}
-                                    </Text>
+                                    {/* FIXED: Dynamic color maps 'pending' transactions explicitly to white text on a red container */}
+                                    <View className={`px-2 py-0.5 rounded-full mt-1 ${isPending ? 'bg-[#ef8844ff]' : 'bg-[#E8F9EE]'}`}>
+                                        <Text className={`text-[9px] font-manrope-bold uppercase ${isPending ? 'text-white' : 'text-[#22C55E]'}`}>
+                                            {item.status || 'CREDIT'}
+                                        </Text>
+                                    </View>
                                 </View>
                             </View>
-                            <View className="items-end">
-                                <Text className="text-[14px] font-manrope-bold text-[#22C55E]">
-                                    +{formatAmount(item.amount)}
-                                </Text>
-                                <View className="bg-[#E8F9EE] px-2 py-0.5 rounded-full mt-1">
-                                    <Text className="text-[9px] font-manrope-bold text-[#22C55E] uppercase">
-                                        {item.status || 'CREDIT'}
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-                    ))}
+                        );
+                    })}
                 </ScrollView>
             )}
         </View>

@@ -1,18 +1,17 @@
 import React, { useRef, useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, Animated, PanResponder, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, PanResponder, Platform } from 'react-native';
+const TRACK_HEIGHT = 6; 
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SLIDER_WIDTH = SCREEN_WIDTH - 64; // 32px padding on each side
-const THUMB_SIZE = 20; // Reduced from 28 for minimalistic look
-const TRACK_HEIGHT = 4; // Reduced from 6 for minimalistic look
-const ACTIVE_COLOR = '#4A43EC';
-const INACTIVE_COLOR = '#E5E7EB';
-const THUMB_BORDER_WIDTH = 3; // Reduced from 4
+// Redfin Signature Style Palette
+const ACTIVE_COLOR = '#4A43EC'; 
+const INACTIVE_COLOR = '#D1D5DB'; 
+const TEXT_COLOR = '#222222'; 
 
-/**
- * Ultra-smooth premium range slider with Airbnb-quality interaction
- * Optimized for 60 FPS performance on low-end Android devices
- */
+// Redfin Rectangular Handle Metrics
+const THUMB_WIDTH = 24; 
+const THUMB_HEIGHT = 24;
+const THUMB_RADIUS = 20;
+
 const PremiumRangeSlider = ({
     min = 0,
     max = 100,
@@ -23,41 +22,36 @@ const PremiumRangeSlider = ({
     onValuesChangeFinish,
     formatLabel,
 }) => {
-    // Memoize initial values to prevent unnecessary re-initialization
     const initialMinValue = useMemo(() => initialMin ?? min, [initialMin, min]);
     const initialMaxValue = useMemo(() => initialMax ?? max, [initialMax, max]);
 
-    // Use Animated.Value for 60fps native-driven animations
     const minThumbPosition = useRef(new Animated.Value(0)).current;
-    const maxThumbPosition = useRef(new Animated.Value(SLIDER_WIDTH)).current;
+    const maxThumbPosition = useRef(new Animated.Value(0)).current;
 
-    // Track current values without causing re-renders during drag
     const currentMinValue = useRef(initialMinValue);
     const currentMaxValue = useRef(initialMaxValue);
 
-    // Local state only updated on drag end to minimize re-renders
     const [displayMin, setDisplayMin] = useState(initialMinValue);
     const [displayMax, setDisplayMax] = useState(initialMaxValue);
-
-    // Active thumb tracking (for visual feedback)
     const [activeThumb, setActiveThumb] = useState(null);
+    const [sliderWidth, setSliderWidth] = useState(0);
+    const dragStart = useRef(0);
 
-    // Convert value to position
+    // Convert value to position coordinates
     const valueToPosition = useCallback((value) => {
         const range = max - min;
         const percentage = (value - min) / range;
-        return percentage * SLIDER_WIDTH;
-    }, [min, max]);
+        return percentage * sliderWidth;
+    }, [min, max, sliderWidth]);
 
-    // Convert position to value
+    // Convert screen coordinates directly back to target steps values
     const positionToValue = useCallback((position) => {
-        const percentage = Math.max(0, Math.min(1, position / SLIDER_WIDTH));
+        const percentage = sliderWidth ? Math.max(0, Math.min(1, position / sliderWidth)) : 0;
         const rawValue = min + percentage * (max - min);
-        const steppedValue = Math.round(rawValue / step) * step;
+        const steppedValue = min + Math.round((rawValue - min) / step) * step;
         return Math.max(min, Math.min(max, steppedValue));
-    }, [min, max, step]);
+    }, [min, max, step, sliderWidth]);
 
-    // Initialize thumb positions
     React.useEffect(() => {
         const minPos = valueToPosition(initialMinValue);
         const maxPos = valueToPosition(initialMaxValue);
@@ -69,39 +63,43 @@ const PremiumRangeSlider = ({
         currentMaxValue.current = initialMaxValue;
     }, [initialMinValue, initialMaxValue, valueToPosition, minThumbPosition, maxThumbPosition]);
 
-    // Optimized value update - minimizes re-renders
     const updateValues = useCallback((newMin, newMax, isFinal = false) => {
         currentMinValue.current = newMin;
         currentMaxValue.current = newMax;
 
         if (isFinal) {
-            // Only update display state on drag end
             setDisplayMin(newMin);
             setDisplayMax(newMax);
             onValuesChangeFinish?.([newMin, newMax]);
         } else {
-            // Call live callback without re-rendering
             onValuesChange?.([newMin, newMax]);
         }
     }, [onValuesChange, onValuesChangeFinish]);
 
-    // MIN THUMB PAN RESPONDER
-    const minPanResponder = useRef(
+    // MIN THUMB PAN RESPONDER WITH POSITION FRICTION
+    const minPanResponder = useMemo(() =>
         PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: () => true,
+            // Do not capture the initial touch. This lets the parent bottom-sheet
+            // scroll view take over when a vertical swipe starts on a thumb.
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+                Math.abs(dx) > 3 && Math.abs(dx) > Math.abs(dy),
             onPanResponderGrant: () => {
+                dragStart.current = valueToPosition(currentMinValue.current);
                 setActiveThumb('min');
             },
             onPanResponderMove: (_, gestureState) => {
                 const currentMaxPos = valueToPosition(currentMaxValue.current);
-                // Reduce sensitivity by 30% for better control
-                const adjustedDx = gestureState.dx * 0.1;
+                
+                // FIXED: Calculates location based on absolute screen coordinates relative to container start padding.
+                // This eliminates fluid vector drift and acts as infinite immediate drag friction.
+                const absoluteTargetPosition = dragStart.current + gestureState.dx;
+                
                 const newPosition = Math.max(
                     0,
                     Math.min(
-                        currentMaxPos - THUMB_SIZE, // Prevent overlap
-                        valueToPosition(currentMinValue.current) + adjustedDx
+                        currentMaxPos,
+                        absoluteTargetPosition
                     )
                 );
 
@@ -116,26 +114,31 @@ const PremiumRangeSlider = ({
                 setActiveThumb(null);
                 updateValues(currentMinValue.current, currentMaxValue.current, true);
             },
-        })
-    ).current;
+            onPanResponderTerminate: () => setActiveThumb(null),
+            onPanResponderTerminationRequest: () => true,
+        }), [positionToValue, updateValues, valueToPosition, minThumbPosition]);
 
-    // MAX THUMB PAN RESPONDER
-    const maxPanResponder = useRef(
+    // MAX THUMB PAN RESPONDER WITH POSITION FRICTION
+    const maxPanResponder = useMemo(() =>
         PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: () => true,
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+                Math.abs(dx) > 3 && Math.abs(dx) > Math.abs(dy),
             onPanResponderGrant: () => {
+                dragStart.current = valueToPosition(currentMaxValue.current);
                 setActiveThumb('max');
             },
             onPanResponderMove: (_, gestureState) => {
                 const currentMinPos = valueToPosition(currentMinValue.current);
-                // Reduce sensitivity by 30% for better control
-                const adjustedDx = gestureState.dx * 0.7;
+                
+                // FIXED: Calculates location based on absolute screen coordinates relative to container start padding.
+                const absoluteTargetPosition = dragStart.current + gestureState.dx;
+                
                 const newPosition = Math.max(
-                    currentMinPos + THUMB_SIZE, // Prevent overlap
+                    currentMinPos,
                     Math.min(
-                        SLIDER_WIDTH,
-                        valueToPosition(currentMaxValue.current) + adjustedDx
+                        sliderWidth,
+                        absoluteTargetPosition
                     )
                 );
 
@@ -150,37 +153,37 @@ const PremiumRangeSlider = ({
                 setActiveThumb(null);
                 updateValues(currentMinValue.current, currentMaxValue.current, true);
             },
-        })
-    ).current;
+            onPanResponderTerminate: () => setActiveThumb(null),
+            onPanResponderTerminationRequest: () => true,
+        }), [positionToValue, sliderWidth, updateValues, valueToPosition, maxThumbPosition]);
 
-    // Calculate active track width and position
     const activeTrackStyle = useMemo(() => ({
         left: minThumbPosition.interpolate({
-            inputRange: [0, SLIDER_WIDTH],
-            outputRange: [0, SLIDER_WIDTH],
+            inputRange: [0, Math.max(1, sliderWidth)],
+            outputRange: [0, Math.max(1, sliderWidth)],
             extrapolate: 'clamp',
         }),
         width: Animated.subtract(maxThumbPosition, minThumbPosition).interpolate({
-            inputRange: [0, SLIDER_WIDTH],
-            outputRange: [0, SLIDER_WIDTH],
+            inputRange: [0, Math.max(1, sliderWidth)],
+            outputRange: [0, Math.max(1, sliderWidth)],
             extrapolate: 'clamp',
         }),
-    }), [minThumbPosition, maxThumbPosition]);
+    }), [minThumbPosition, maxThumbPosition, sliderWidth]);
 
-    // Format display labels
     const formattedMin = formatLabel?.(displayMin) ?? `₹${displayMin}`;
     const formattedMax = formatLabel?.(displayMax) ?? `₹${displayMax}`;
 
     return (
         <View style={styles.container}>
-            {/* Value Labels */}
+            {/* Value Labels Header */}
             <View style={styles.labelsContainer}>
                 <Text style={styles.labelText}>{formattedMin}</Text>
+                <Text style={styles.labelSeparator}>—</Text>
                 <Text style={styles.labelText}>{formattedMax}</Text>
             </View>
 
-            {/* Slider Track Container */}
-            <View style={styles.sliderContainer}>
+            {/* Slider Track Body Field */}
+            <View style={styles.sliderContainer} onLayout={(event) => setSliderWidth(event.nativeEvent.layout.width)}>
                 {/* Inactive Track */}
                 <View style={[styles.track, styles.inactiveTrack]} />
 
@@ -193,7 +196,7 @@ const PremiumRangeSlider = ({
                     ]} 
                 />
 
-                {/* Min Thumb */}
+                {/* Min Thumb Rectangular Pill */}
                 <Animated.View
                     style={[
                         styles.thumb,
@@ -201,20 +204,15 @@ const PremiumRangeSlider = ({
                             transform: [
                                 { translateX: minThumbPosition },
                                 { 
-                                    scale: activeThumb === 'min' 
-                                        ? 1.1  // Reduced from 1.15 for subtle feedback
-                                        : 1 
+                                    scale: activeThumb === 'min' ? 1.05 : 1 
                                 },
                             ],
                         },
-                        activeThumb === 'min' && styles.thumbActive,
                     ]}
                     {...minPanResponder.panHandlers}
-                >
-                    <View style={styles.thumbInner} />
-                </Animated.View>
+                />
 
-                {/* Max Thumb */}
+                {/* Max Thumb Rectangular Pill */}
                 <Animated.View
                     style={[
                         styles.thumb,
@@ -222,18 +220,13 @@ const PremiumRangeSlider = ({
                             transform: [
                                 { translateX: maxThumbPosition },
                                 { 
-                                    scale: activeThumb === 'max' 
-                                        ? 1.1  // Reduced from 1.15 for subtle feedback
-                                        : 1 
+                                    scale: activeThumb === 'max' ? 1.05 : 1 
                                 },
                             ],
                         },
-                        activeThumb === 'max' && styles.thumbActive,
                     ]}
                     {...maxPanResponder.panHandlers}
-                >
-                    <View style={styles.thumbInner} />
-                </Animated.View>
+                />
             </View>
         </View>
     );
@@ -245,16 +238,22 @@ const styles = StyleSheet.create({
     },
     labelsContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 16,
+        alignItems: 'center',
+        marginBottom: 20,
     },
     labelText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: TEXT_COLOR,
+        fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif-medium',
+    },
+    labelSeparator: {
+        marginHorizontal: 8,
         fontSize: 14,
-        fontWeight: '600',
-        color: ACTIVE_COLOR,
+        color: '#666666',
     },
     sliderContainer: {
-        height: THUMB_SIZE + 20, 
+        height: THUMB_HEIGHT + 10, 
         justifyContent: 'center',
         position: 'relative',
     },
@@ -264,7 +263,8 @@ const styles = StyleSheet.create({
         position: 'absolute',
     },
     inactiveTrack: {
-        width: SLIDER_WIDTH,
+        left: 0,
+        right: 0,
         backgroundColor: INACTIVE_COLOR,
     },
     activeTrack: {
@@ -272,35 +272,22 @@ const styles = StyleSheet.create({
     },
     thumb: {
         position: 'absolute',
-        width: THUMB_SIZE,
-        height: THUMB_SIZE,
-        borderRadius: THUMB_SIZE / 2,
+        width: THUMB_WIDTH,
+        height: THUMB_HEIGHT,
+        borderRadius: THUMB_RADIUS,
         backgroundColor: '#FFFFFF',
-        borderWidth: THUMB_BORDER_WIDTH,
-        borderColor: ACTIVE_COLOR,
-        marginLeft: -THUMB_SIZE / 2, // Center on position
-        marginTop: -(THUMB_SIZE - TRACK_HEIGHT) / 2, // Center vertically
-        shadowColor: ACTIVE_COLOR,
+        borderWidth: 1,
+        borderColor: '#CCCCCC',
+        marginLeft: -THUMB_WIDTH / 2, 
+        marginTop: -(THUMB_HEIGHT - TRACK_HEIGHT) / 2, 
+        shadowColor: '#000000',
         shadowOffset: {
             width: 0,
-            height: 2,
+            height: 3,
         },
-        shadowOpacity: 0.25,
+        shadowOpacity: 0.18,
         shadowRadius: 4,
-        elevation: 5,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    thumbActive: {
-        shadowOpacity: 0.4,
-        shadowRadius: 6,
-        elevation: 8,
-    },
-    thumbInner: {
-        width: 6,  // Reduced from 8 for minimalistic look
-        height: 6, // Reduced from 8 for minimalistic look
-        borderRadius: 3,
-        backgroundColor: ACTIVE_COLOR,
+        elevation: 4,
     },
 });
 

@@ -30,7 +30,7 @@ const getPropertySubtype = (item) => (
 );
 
 const getBedroomFilterValue = (item) => {
-    const kind = normalizeText(item.kind_of_property || item.bhk_type);
+    const kind = normalizeText(item.description || item.kind_of_property || item.bhk_type);
     if (kind.includes('bhk')) return kind;
 
     const bedrooms = Number(item.bedrooms);

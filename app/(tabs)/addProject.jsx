@@ -225,8 +225,32 @@ export default function AddProject() {
         }
     }, [isEditMode, dispatch, handleResetAllLocalFields]);
 
+    // State to track if we're returning from location/nearby picker
+    const isReturningFromPicker = useRef(false);
+
+    useEffect(() => {
+        // Mark that we're returning from picker if pickedLocation or pickedNearbyProject exists
+        if (pickedLocation || pickedNearbyProject) {
+            console.log('🔄 [AddProject] Detected picker data - marking as returning from picker');
+            console.log('  - pickedLocation:', !!pickedLocation);
+            console.log('  - pickedNearbyProject:', !!pickedNearbyProject);
+            isReturningFromPicker.current = true;
+        }
+    }, [pickedLocation, pickedNearbyProject]);
+
     useFocusEffect(
         useCallback(() => {
+            console.log('👁️ [AddProject] useFocusEffect triggered');
+            console.log('  - isReturningFromPicker:', isReturningFromPicker.current);
+            console.log('  - routeMode:', routeMode);
+            
+            // Don't reset if returning from location/nearby picker
+            if (isReturningFromPicker.current) {
+                console.log("✅ [AddProject] Returning from picker - preserving state");
+                isReturningFromPicker.current = false;
+                return;
+            }
+
             if (routeMode !== "edit") {
                 console.log("🧹 [AddProject] Focused in add mode - clearing stale edit state");
                 dispatch(resetProject());
@@ -271,9 +295,10 @@ export default function AddProject() {
             const subTypeValue = currentItem.sub_type || currentItem.property_type || null;
             setSelectedSubType(subTypeValue);
 
-            if (currentItem.kind_of_property) {
-                if (currentItem.kind_of_property.includes('bhk') || currentItem.kind_of_property.includes('_bhk')) {
-                    setSelectedBhk(currentItem.kind_of_property);
+            const storedBhk = currentItem.description || currentItem.kind_of_property;
+            if (storedBhk) {
+                if (storedBhk.includes('bhk') || storedBhk.includes('_bhk')) {
+                    setSelectedBhk(storedBhk);
                 } else {
                     setSelectedKind(currentItem.kind_of_property);
                 }
@@ -287,7 +312,7 @@ export default function AddProject() {
             setVerifiedOwnerContact("");
             setOtp(["", "", "", "", "", ""]);
             setOwnerEmail(currentItem.owner_email || currentItem.contact_email || "");   
-            setOwnerAddress(currentItem.owner_address || currentItem.description || "");
+            setOwnerAddress(currentItem.owner_address || "");
             setOwnerAddressLatitude(currentItem.owner_latitude || null);
             setOwnerAddressLongitude(currentItem.owner_longitude || null);
 
@@ -904,22 +929,36 @@ export default function AddProject() {
                                         
                                         try {
                                             let kindOfProperty = null;
+                                            let description = null;
                                             
                                             if (selectedMainType === "residential" && showBhk) {
-                                                kindOfProperty = selectedBhk;
+                                                // For residential, don't set kind_of_property to BHK
+                                                // Extract bedroom number from BHK selection (e.g., "3_bhk" -> 3, "5_plus_bhk" -> 5)
+                                                description = selectedBhk;
                                             }
                                             else if (selectedMainType === "commercial" && showKind) {
                                                 kindOfProperty = selectedKind;
                                             }
                                             
-                                            await dispatch(createBasicDetails({
+                                            const payload = {
                                                 category: selectedMainType,
                                                 property_type: selectedSubType,
                                                 kind_of_property: kindOfProperty,
+                                                description,
                                                 listing_type: 'buy'
-                                            })).unwrap();
+                                            };
+                                            
+                                            // Add bedrooms field if extracted from BHK
+                                            console.log('📤 [AddProject] Creating basic details with payload:', payload);
+                                            await dispatch(createBasicDetails(payload)).unwrap();
                                             setCurrentStep(prev => prev + 1);
-                                        } catch (_) {}
+                                        } catch (error) {
+                                            console.error('❌ [AddProject] Create basic details error:', error);
+                                            Alert.alert(
+                                                "Error",
+                                                getErrorMessage(error)
+                                            );
+                                        }
                                     }}
                                 >
                                     <Text className="text-white text-sm font-lato-bold">Next</Text>

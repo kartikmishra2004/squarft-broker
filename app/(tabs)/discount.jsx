@@ -24,13 +24,20 @@ function CommissionCard({ item }) {
     const title = item.propertyName || "Commission Earned";
     const location = item.propertyAddress || "Property commission";
 
+    // Detect if status is pending
+    const isPending = String(status).trim().toLowerCase() === "pending";
+
     return (
         <View className="bg-white rounded-2xl mb-4 px-4 py-4 border border-1.5 border-[#E5E7EB]">
             <View className="flex-row items-start justify-between mb-1">
                 <Text className="text-[15px] font-lato-bold text-[#1a1a1a] flex-1 mr-2" numberOfLines={1}>
                     {title}
                 </Text>
-                <View className="px-5 py-0.5 rounded-full bg-[#1E9500]">
+                {/* FIXED: Dynamic background color changes pending to #ef8844ff while keeping white text */}
+                <View 
+                    className="px-5 py-0.5 rounded-full"
+                    style={{ backgroundColor: isPending ? "#ef8844ff" : "#1E9500" }}
+                >
                     <Text className="text-white text-[10px] font-roboto-medium">{status}</Text>
                 </View>
             </View>
@@ -43,8 +50,12 @@ function CommissionCard({ item }) {
             </View>
 
             <View className="flex-row items-center justify-between">
-                <Text className="text-[16px] font-lato-medium text-[#1E9500]">
-                    +{formatAmount(item.amount)}
+                {/* FIXED: Changes amount text color dynamically if item status is pending */}
+                <Text 
+                    className="text-[16px] font-lato-medium"
+                    style={{ color: isPending ? "#ef8844ff" : "#1E9500" }}
+                >
+                    {isPending ? "" : "+"}{formatAmount(item.amount)}
                 </Text>
                 <Text className="text-[12px] text-gray-400 font-roboto italic">
                     {formatDate(item.createdAt)}

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StatusBar, TextInput } from 'react-native';
+import { View, Text, Pressable, ScrollView, StatusBar, TextInput, Alert } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
@@ -10,7 +11,7 @@ const TransactionsScreen = () => {
     const dispatch = useDispatch();
     const router = useRouter();
     const bottomSheetModalRef = useRef(null);
-    const { transactions, loading } = useSelector((state) => state.wallet);
+    const { transactions } = useSelector((state) => state.wallet);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [searchText, setSearchText] = useState("");
 
@@ -39,6 +40,13 @@ const TransactionsScreen = () => {
         setSelectedTransaction(transaction);
         bottomSheetModalRef.current?.present();
     }, []);
+
+    const handleCopyTransaction = useCallback(async () => {
+        const transactionNumber = selectedTransaction?.transactionNo || selectedTransaction?.id;
+        if (transactionNumber === null || transactionNumber === undefined) return;
+        await Clipboard.setStringAsync(String(transactionNumber));
+        Alert.alert('Copied', 'Transaction number copied to clipboard.');
+    }, [selectedTransaction]);
 
     const renderBackdrop = useCallback(
         (props) => (
@@ -120,11 +128,8 @@ const TransactionsScreen = () => {
                 }}
             >
                 <BottomSheetView className="flex-1 px-6 pt-5">
-                    <View className="flex-row items-center justify-between mb-1">
+                    <View className="mb-1">
                         <Text className="text-[15px] font-manrope-extrabold text-[#272727]">{selectedTransaction?.title}</Text>
-                        <Pressable onPress={() => bottomSheetModalRef.current?.dismiss()}>
-                            <Text className="text-[#FF4B4B] font-manrope-bold text-[12px]">Cancel</Text>
-                        </Pressable>
                     </View>
                     <Text className="text-gray-400 font-manrope-medium mb-5 text-[11px]">{selectedTransaction?.location}</Text>
 
@@ -142,7 +147,12 @@ const TransactionsScreen = () => {
                             <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">Transaction no.</Text>
                             <Text className="text-[#272727] text-[13px] font-manrope-bold">{selectedTransaction?.transactionNo}</Text>
                         </View>
-                        <Pressable className="p-2 border border-blue-50 bg-blue-50/30 rounded-xl">
+                        <Pressable
+                            onPress={handleCopyTransaction}
+                            accessibilityRole="button"
+                            accessibilityLabel="Copy transaction number"
+                            className="p-2 border border-blue-50 bg-blue-50/30 rounded-xl"
+                        >
                             <Ionicons name="copy-outline" size={18} color="#4D45ED" />
                         </Pressable>
                     </View>

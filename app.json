@@ -10,6 +10,9 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyDiYnY4FG1juihWvHEgM-NSz2aEKUsKing"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Allow squarFT Broker to use your location for selecting property and owner addresses."
       }

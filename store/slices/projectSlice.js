@@ -7,37 +7,25 @@ const authHeader = (token) => ({ Authorization: `Bearer ${token}` });
 // Step 1 — create property with basic details (FIXED TO MATCH BACKEND)
 export const createBasicDetails = createAsyncThunk(
     'project/createBasicDetails',
-    async ({ category, property_type, kind_of_property, listing_type }, { getState, rejectWithValue }) => {
+    async ({ category, property_type, kind_of_property, description, listing_type }, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
             
-            // BACKEND ACTUALLY EXPECTS: { property_type, property_subtype, listing_type, kind_of_property }
-            // Backend uses these field names in the controller (line 837-879 of propertyController.js)
             const payload = {
                 property_type: category,                           // residential/commercial
                 property_subtype: property_type,                   // shop/showroom/office/plot/villa/apartment/rowhouse
                 listing_type: listing_type || 'buy',               // buy/rent
-                kind_of_property: kind_of_property                 // 1_bhk/2_bhk/ready/bare/coworking
+                kind_of_property: kind_of_property,
+                description: description || null
             };
             
-            // COMPREHENSIVE LOGGING - DO NOT REMOVE
-            console.log('=== Frontend createBasicDetails DEBUG ===');
-            console.log('Input params:', { category, property_type, kind_of_property, listing_type });
-            console.log('Mapped payload being sent:', JSON.stringify(payload));
-            console.log('API Endpoint: POST /api/v1/broker/properties/basic-details');
-            console.log('=========================================');
-            
+            // Add bedrooms for residential properties
             const res = await fetch(`${API_BASE_URL}/api/v1/broker/properties/basic-details`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...authHeader(token) },
                 body: JSON.stringify(payload),
             });
             const data = await res.json();
-            
-            console.log('=== Frontend Response ===');
-            console.log('Status:', res.status);
-            console.log('Response:', JSON.stringify(data));
-            console.log('========================');
             
             if (!res.ok) return rejectWithValue(data.message);
             return { 
@@ -47,9 +35,6 @@ export const createBasicDetails = createAsyncThunk(
                 kind_of_property
             };
         } catch (err) {
-            console.error('=== Frontend Error ===');
-            console.error('Error:', err.message);
-            console.error('=====================');
             return rejectWithValue(err.message);
         }
     }
@@ -66,7 +51,7 @@ export const updateOwnerDetails = createAsyncThunk(
             // BACKEND NOW ACCEPTS: { title, description, contact_no, contact_email }
             const payload = {
                 title: listingTitle || 'Property Listing',
-                description: owner_address || '',
+                owner_address: owner_address || null,
                 contact_no: owner_contact || null,
                 contact_email: owner_email || null
             };
@@ -110,7 +95,6 @@ export const updatePropertyDetails = createAsyncThunk(
             //   tower_no, flat_no, state, khasra_no, property_age
             // }
             const payload = {
-                bedrooms: null,                                    // Will be set based on BHK in future
                 bathrooms: null,                                   // Not collected yet
                 floors: null,                                      // Not collected yet
                 latitude: latitude !== undefined ? latitude : null,
