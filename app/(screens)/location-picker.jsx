@@ -15,7 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Location from "expo-location";
-import MapView from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -33,6 +33,54 @@ const DEFAULT_REGION = {
     longitude: 75.8577,
     latitudeDelta: 0.018,
     longitudeDelta: 0.018,
+};
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+const getGoogleLocation = async ({ latitude, longitude }) => {
+    if (!GOOGLE_MAPS_API_KEY) throw new Error("Google Maps API key is not configured");
+
+    const params = new URLSearchParams({
+        latlng: `${latitude},${longitude}`,
+        key: GOOGLE_MAPS_API_KEY,
+    });
+    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params}`);
+    const data = await response.json();
+    const result = data.results?.[0];
+    if (!response.ok || data.status !== "OK" || !result) {
+        throw new Error(data.error_message || "Google could not resolve this location");
+    }
+
+    const component = (type) => result.address_components?.find((item) => item.types.includes(type))?.long_name || null;
+    return {
+        id: result.place_id,
+        address: result.formatted_address,
+        latitude,
+        longitude,
+        area: component("sublocality_level_1") || component("neighborhood"),
+        city: component("locality") || component("administrative_area_level_2"),
+        state: component("administrative_area_level_1"),
+        pincode: component("postal_code"),
+        provider: "google",
+    };
+};
+
+const searchGoogleLocations = async (query, limit = 6) => {
+    if (!GOOGLE_MAPS_API_KEY) throw new Error("Google Maps API key is not configured");
+
+    const params = new URLSearchParams({ address: query, key: GOOGLE_MAPS_API_KEY, region: "in" });
+    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params}`);
+    const data = await response.json();
+    if (!response.ok || !["OK", "ZERO_RESULTS"].includes(data.status)) {
+        throw new Error(data.error_message || "Google location search failed");
+    }
+
+    return (data.results || []).slice(0, limit).map((result) => ({
+        id: result.place_id,
+        address: result.formatted_address,
+        latitude: result.geometry.location.lat,
+        longitude: result.geometry.location.lng,
+        provider: "google",
+    }));
 };
 
 const asCoordinate = (value) => {
@@ -78,39 +126,6 @@ const getDeviceLocationResult = async ({ latitude, longitude }) => {
         pincode,
         provider: "expo-location",
     };
-};
-
-const searchDeviceLocations = async (query, limit = 6) => {
-    const coordinates = await Location.geocodeAsync(query);
-    const limitedCoordinates = coordinates.slice(0, limit);
-    const results = await Promise.all(limitedCoordinates.map(async (coordinate, index) => {
-        const latitude = asCoordinate(coordinate.latitude);
-        const longitude = asCoordinate(coordinate.longitude);
-        if (latitude === null || longitude === null) return null;
-
-        try {
-            const result = await getDeviceLocationResult({ latitude, longitude });
-            return {
-                ...result,
-                id: `device-${index}-${latitude},${longitude}`,
-                address: getLocationAddress(result) || query,
-            };
-        } catch (_) {
-            return {
-                id: `device-${index}-${latitude},${longitude}`,
-                address: query,
-                latitude,
-                longitude,
-                city: null,
-                state: null,
-                pincode: null,
-                area: null,
-                provider: "expo-location",
-            };
-        }
-    }));
-
-    return results.filter(Boolean);
 };
 
 export default function LocationPicker() {
@@ -163,11 +178,12 @@ export default function LocationPicker() {
         }
 
         try {
-            await dispatch(searchLocations({ query: cleanQuery })).unwrap();
+            const googleResults = await searchGoogleLocations(cleanQuery);
+            dispatch(setLocationResults(googleResults));
             setSelected(null);
         } catch (searchError) {
             try {
-                const fallbackResults = await searchDeviceLocations(cleanQuery);
+                const fallbackResults = await dispatch(searchLocations({ query: cleanQuery })).unwrap();
                 if (fallbackResults.length > 0) {
                     dispatch(setLocationResults(fallbackResults));
                     setSelected(null);
@@ -277,15 +293,19 @@ export default function LocationPicker() {
         let resolvedLocation = null;
 
         try {
-            resolvedLocation = await dispatch(reverseGeocodeLocation({
+            resolvedLocation = await getGoogleLocation({
                 latitude: centerRegion.latitude,
                 longitude: centerRegion.longitude,
-            })).unwrap();
+            });
         } catch (_) {
             try {
-                resolvedLocation = await getDeviceLocationResult(centerRegion);
+                resolvedLocation = await dispatch(reverseGeocodeLocation(centerRegion)).unwrap();
             } catch (_) {
-                resolvedLocation = null;
+                try {
+                    resolvedLocation = await getDeviceLocationResult(centerRegion);
+                } catch (_) {
+                    resolvedLocation = null;
+                }
             }
         }
 
@@ -370,6 +390,7 @@ export default function LocationPicker() {
                 <View className="h-96 rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 mb-4">
                     <MapView
                         ref={mapRef}
+                        provider={PROVIDER_GOOGLE}
                         style={{ flex: 1 }}
                         initialRegion={mapRegion}
                         showsUserLocation={true}

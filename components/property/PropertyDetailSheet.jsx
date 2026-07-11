@@ -186,7 +186,8 @@ export default function PropertyDetailSheet({
   const category = String(firstValue(item, ["category", "type", "property_category"]) || "").toLowerCase();
   const isResidential = category.includes("residential");
   
-  // For residential: show BHK type, for commercial: show property type
+  const propertySubType = formatTextValue(firstValue(item, ["sub_type", "property_subtype"]));
+
   const getPropertySubtype = () => {
     // 🔍 DEBUG: Log what data we're working with
     console.log('🏠 [PropertyDetailSheet] getPropertySubtype DEBUG:', {
@@ -199,7 +200,12 @@ export default function PropertyDetailSheet({
     });
     
     if (isResidential) {
-      // ✅ UPDATED: Check bedrooms field first (new storage location)
+      const description = firstValue(item, ["description"]);
+      if (String(description || "").toLowerCase().includes("bhk")) {
+        return [propertySubType, formatTextValue(description)].filter(Boolean).join(" · ");
+      }
+
+      // Legacy fallback for properties created before BHK moved to description.
       const bedroomsCount = firstValue(item, ["bedrooms"]);
       
       console.log('🔍 [PropertyDetailSheet] bedroomsCount from firstValue:', bedroomsCount);
@@ -208,7 +214,7 @@ export default function PropertyDetailSheet({
         const num = parseInt(bedroomsCount);
         const result = num >= 5 ? "5+ BHK" : `${num} BHK`;
         console.log('✅ [PropertyDetailSheet] Returning BHK from bedrooms:', result);
-        return result;
+        return [propertySubType, result].filter(Boolean).join(" · ");
       }
       
       // Fallback: Check legacy kind_of_property field for backward compatibility
@@ -223,20 +229,19 @@ export default function PropertyDetailSheet({
         const bhkStr = String(bhkType).toLowerCase();
         // If already formatted as "3_bhk" or "3 bhk"
         if (bhkStr.includes("bhk")) {
-          return formatTextValue(bhkType);
+          return [propertySubType, formatTextValue(bhkType)].filter(Boolean).join(" · ");
         }
         // If it's just a number like "3" or 3
         const num = parseInt(bhkType);
         if (!isNaN(num)) {
-          return num >= 5 ? "5+ BHK" : `${num} BHK`;
+          const legacyBhk = num >= 5 ? "5+ BHK" : `${num} BHK`;
+          return [propertySubType, legacyBhk].filter(Boolean).join(" · ");
         }
       }
     } 
     
     // For commercial or if BHK not found, show property type/subtype
-    const fallback = formatTextValue(firstValue(item, [
-      "property_subtype",
-    ]));
+    const fallback = propertySubType;
     console.log('🔍 [PropertyDetailSheet] Returning fallback property_subtype:', fallback);
     return fallback;
   };

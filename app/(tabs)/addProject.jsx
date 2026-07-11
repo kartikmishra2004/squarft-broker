@@ -295,9 +295,10 @@ export default function AddProject() {
             const subTypeValue = currentItem.sub_type || currentItem.property_type || null;
             setSelectedSubType(subTypeValue);
 
-            if (currentItem.kind_of_property) {
-                if (currentItem.kind_of_property.includes('bhk') || currentItem.kind_of_property.includes('_bhk')) {
-                    setSelectedBhk(currentItem.kind_of_property);
+            const storedBhk = currentItem.description || currentItem.kind_of_property;
+            if (storedBhk) {
+                if (storedBhk.includes('bhk') || storedBhk.includes('_bhk')) {
+                    setSelectedBhk(storedBhk);
                 } else {
                     setSelectedKind(currentItem.kind_of_property);
                 }
@@ -311,7 +312,7 @@ export default function AddProject() {
             setVerifiedOwnerContact("");
             setOtp(["", "", "", "", "", ""]);
             setOwnerEmail(currentItem.owner_email || currentItem.contact_email || "");   
-            setOwnerAddress(currentItem.owner_address || currentItem.description || "");
+            setOwnerAddress(currentItem.owner_address || "");
             setOwnerAddressLatitude(currentItem.owner_latitude || null);
             setOwnerAddressLongitude(currentItem.owner_longitude || null);
 
@@ -928,16 +929,12 @@ export default function AddProject() {
                                         
                                         try {
                                             let kindOfProperty = null;
-                                            let bedrooms = null;
+                                            let description = null;
                                             
                                             if (selectedMainType === "residential" && showBhk) {
                                                 // For residential, don't set kind_of_property to BHK
                                                 // Extract bedroom number from BHK selection (e.g., "3_bhk" -> 3, "5_plus_bhk" -> 5)
-                                                const bhkMatch = selectedBhk.match(/^(\d+)/);
-                                                if (bhkMatch) {
-                                                    bedrooms = parseInt(bhkMatch[1], 10);
-                                                    console.log(`🛏️ [AddProject] Extracted ${bedrooms} bedrooms from ${selectedBhk}`);
-                                                }
+                                                description = selectedBhk;
                                             }
                                             else if (selectedMainType === "commercial" && showKind) {
                                                 kindOfProperty = selectedKind;
@@ -947,14 +944,11 @@ export default function AddProject() {
                                                 category: selectedMainType,
                                                 property_type: selectedSubType,
                                                 kind_of_property: kindOfProperty,
+                                                description,
                                                 listing_type: 'buy'
                                             };
                                             
                                             // Add bedrooms field if extracted from BHK
-                                            if (bedrooms !== null) {
-                                                payload.bedrooms = bedrooms;
-                                            }
-                                            
                                             console.log('📤 [AddProject] Creating basic details with payload:', payload);
                                             await dispatch(createBasicDetails(payload)).unwrap();
                                             setCurrentStep(prev => prev + 1);
