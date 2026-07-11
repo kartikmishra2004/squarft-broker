@@ -34,4 +34,11 @@ module.exports = {
       },
     },
   },
+  updates: {
+    ...appJson.expo.updates,
+    url: "https://u.expo.dev/349e4cf6-ce87-4216-98a1-a9d26a278880",
+  },
+  runtimeVersion: {
+    policy: "appVersion",
+  },
 };
