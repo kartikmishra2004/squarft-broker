@@ -79,8 +79,11 @@ const PremiumRangeSlider = ({
     // MIN THUMB PAN RESPONDER WITH POSITION FRICTION
     const minPanResponder = useMemo(() =>
         PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: () => true,
+            // Do not capture the initial touch. This lets the parent bottom-sheet
+            // scroll view take over when a vertical swipe starts on a thumb.
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+                Math.abs(dx) > 3 && Math.abs(dx) > Math.abs(dy),
             onPanResponderGrant: () => {
                 dragStart.current = valueToPosition(currentMinValue.current);
                 setActiveThumb('min');
@@ -111,13 +114,16 @@ const PremiumRangeSlider = ({
                 setActiveThumb(null);
                 updateValues(currentMinValue.current, currentMaxValue.current, true);
             },
+            onPanResponderTerminate: () => setActiveThumb(null),
+            onPanResponderTerminationRequest: () => true,
         }), [positionToValue, updateValues, valueToPosition, minThumbPosition]);
 
     // MAX THUMB PAN RESPONDER WITH POSITION FRICTION
     const maxPanResponder = useMemo(() =>
         PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: () => true,
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+                Math.abs(dx) > 3 && Math.abs(dx) > Math.abs(dy),
             onPanResponderGrant: () => {
                 dragStart.current = valueToPosition(currentMaxValue.current);
                 setActiveThumb('max');
@@ -147,6 +153,8 @@ const PremiumRangeSlider = ({
                 setActiveThumb(null);
                 updateValues(currentMinValue.current, currentMaxValue.current, true);
             },
+            onPanResponderTerminate: () => setActiveThumb(null),
+            onPanResponderTerminationRequest: () => true,
         }), [positionToValue, sliderWidth, updateValues, valueToPosition, maxThumbPosition]);
 
     const activeTrackStyle = useMemo(() => ({
