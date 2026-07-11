@@ -23,6 +23,8 @@ import PropertyDetailSheet from "../../components/property/PropertyDetailSheet";
 import { fetchShortlistedProperties } from "../../store/slices/propertySlice";
 import { fetchPropertyDetails, fetchProjectDetails } from "../../store/slices/myAddedSlice";
 
+const PRICE_RANGE_MAX = 50000000; // ₹5 Cr
+
 export default function PropertyType() {
     const { typeId, category } = useLocalSearchParams();
     const dispatch = useDispatch();
@@ -36,25 +38,9 @@ export default function PropertyType() {
     const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
     const router = useRouter();
 
-    // Dynamic Extrema Calculator
-    const calculatedPriceMax = useMemo(() => {
-        if (!properties || properties.length === 0) return 50000000; // 5Cr Default fallback if empty
-        const maxFound = properties.reduce((max, p) => {
-            const price = p.base_price || p.min_price || p.price_from || p.max_price || p.price_to || 0;
-            return price > max ? price : max;
-        }, 0);
-        return maxFound > 0 ? maxFound : 50000000;
-    }, [properties]);
-
     // Local frontend filter states wrapped inside an unified layout boundaries track object
-    const [priceRange, setPriceRange] = useState({ min: 0, max: 50000000 });
-    const [tempPriceRange, setTempPriceRange] = useState({ min: 0, max: 50000000 });
-
-    // Synchronize default value states when collection finishes loading from network
-    useEffect(() => {
-        setPriceRange({ min: 0, max: calculatedPriceMax });
-        setTempPriceRange({ min: 0, max: calculatedPriceMax });
-    }, [calculatedPriceMax]);
+    const [priceRange, setPriceRange] = useState({ min: 0, max: PRICE_RANGE_MAX });
+    const [tempPriceRange, setTempPriceRange] = useState({ min: 0, max: PRICE_RANGE_MAX });
 
     // Fetch initial list data payload
     useEffect(() => {
@@ -86,7 +72,7 @@ export default function PropertyType() {
     };
 
     const handleResetFilters = () => {
-        setTempPriceRange({ min: 0, max: calculatedPriceMax });
+        setTempPriceRange({ min: 0, max: PRICE_RANGE_MAX });
     };
 
     const handleTypePress = (id) => {
@@ -195,7 +181,7 @@ export default function PropertyType() {
                         } else {
                             setView("types");
                             setSearchQuery("");
-                            setPriceRange({ min: 0, max: calculatedPriceMax });
+                            setPriceRange({ min: 0, max: PRICE_RANGE_MAX });
                         }
                     }} className="p-1">
                         <Ionicons name="arrow-back" size={22} color="black" />
@@ -285,10 +271,10 @@ export default function PropertyType() {
                                 {/* ✅ FIXED: Slider maps array indices safely to retain full multi-thumb continuous ideal dragging physics smoothly */}
                                 <PremiumRangeSlider
                                     min={0}
-                                    max={calculatedPriceMax}
+                                    max={PRICE_RANGE_MAX}
                                     initialMin={tempPriceRange.min}
                                     initialMax={tempPriceRange.max}
-                                    step={calculatedPriceMax > 1000000 ? 50000 : 1000}
+                                    step={100000}
                                     onValuesChangeFinish={(values) => {
                                         if (Array.isArray(values)) {
                                             setTempPriceRange({
@@ -300,11 +286,10 @@ export default function PropertyType() {
                                         }
                                     }}
                                     formatLabel={formatSliderLabel}
-                                    isSingleThumb={true}
                                 />
                             </View>
                             <View className="flex-row justify-between px-1">
-                                {[0, calculatedPriceMax * 0.25, calculatedPriceMax * 0.5, calculatedPriceMax * 0.75, calculatedPriceMax].map((val, idx) => (
+                                {[0, 12500000, 25000000, 37500000, PRICE_RANGE_MAX].map((val, idx) => (
                                     <Text key={idx} className="text-[10px] text-gray-400 font-lato-medium">
                                         {formatSliderLabel(val)}
                                     </Text>

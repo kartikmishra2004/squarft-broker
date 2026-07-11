@@ -6,6 +6,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { fetchWalletOverview, fetchBankAccounts, fetchTransactions, requestWithdrawalApi } from '../../store/slices/walletSlice';
 import { notifyWithdrawalRequested } from '../../utils/notificationHelpers';
+import * as Clipboard from 'expo-clipboard';
 
 const WalletScreen = () => {
     const router = useRouter();
@@ -36,6 +37,13 @@ const WalletScreen = () => {
         setSelectedTransaction(transaction);
         bottomSheetModalRef.current?.present();
     }, []);
+
+    const handleCopyTransaction = useCallback(async () => {
+        const transactionNumber = selectedTransaction?.transactionNo || selectedTransaction?.id;
+        if (transactionNumber === null || transactionNumber === undefined) return;
+        await Clipboard.setStringAsync(String(transactionNumber));
+        Alert.alert('Copied', 'Transaction number copied to clipboard.');
+    }, [selectedTransaction]);
 
     const renderBackdrop = useCallback(
         (props) => (
@@ -290,7 +298,12 @@ const WalletScreen = () => {
                             <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">Transaction no.</Text>
                             <Text className="text-[#272727] text-[13px] font-manrope-bold">{selectedTransaction?.id?.toString().slice(0, 8)}...</Text>
                         </View>
-                        <Pressable className="p-2 border border-blue-50 bg-blue-50/30 rounded-xl">
+                        <Pressable
+                            onPress={handleCopyTransaction}
+                            accessibilityRole="button"
+                            accessibilityLabel="Copy transaction number"
+                            className="p-2 border border-blue-50 bg-blue-50/30 rounded-xl"
+                        >
                             <Ionicons name="copy-outline" size={20} color="#4D45ED" />
                         </Pressable>
                     </View>
