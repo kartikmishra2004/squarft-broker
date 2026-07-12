@@ -20,7 +20,7 @@ const readDotEnvValue = (key) => {
 };
 
 const googleMapsApiKey =
-  process.env.GOOGLE_MAPS_API_KEY || readDotEnvValue("GOOGLE_MAPS_API_KEY");
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || readDotEnvValue("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY");
 
 module.exports = {
   ...appJson.expo,
