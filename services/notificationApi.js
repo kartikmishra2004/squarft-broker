@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.31.27:3001';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 export const BROKER_APP_KEY = 'broker_app';
 

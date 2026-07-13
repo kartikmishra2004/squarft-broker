@@ -73,7 +73,7 @@
       },
       "router": {},
       "eas": {
-        "projectId": "da50829c-a64a-48ac-92d9-799acc8f8a94"
+        "projectId": "349e4cf6-ce87-4216-98a1-a9d26a278880"
       }
     },
     "splash": {
@@ -87,7 +87,6 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    },
-    "owner": "untidybloom"
+    }
   }
 }
