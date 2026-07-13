@@ -16,13 +16,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchNearbyProjects, pickNearbyProject } from "../../store/slices/propertySlice";
 
-const DEFAULT_LATITUDE = 23.2599;
-const DEFAULT_LONGITUDE = 77.4126;
 const DEFAULT_RADIUS = 10;
 
 const firstParam = (value, fallback = "") => Array.isArray(value) ? value[0] || fallback : value || fallback;
 
-const asNumber = (value, fallback) => {
+const asNumber = (value, fallback = null) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
 };
@@ -65,12 +63,13 @@ export default function NearbyProjects() {
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
     const params = useLocalSearchParams();
-    const latitude = asNumber(firstParam(params.latitude), DEFAULT_LATITUDE);
-    const longitude = asNumber(firstParam(params.longitude), DEFAULT_LONGITUDE);
+    const latitude = asNumber(firstParam(params.latitude));
+    const longitude = asNumber(firstParam(params.longitude));
     const radius = asNumber(firstParam(params.radius), DEFAULT_RADIUS);
     const { nearbyProjects, nearbyProjectsLoading, error } = useSelector((state) => state.property);
 
     const loadNearbyProjects = useCallback(() => {
+        if (latitude === null || longitude === null) return;
         dispatch(fetchNearbyProjects({ latitude, longitude, radius }));
     }, [dispatch, latitude, longitude, radius]);
 

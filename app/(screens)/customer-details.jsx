@@ -5,7 +5,6 @@ import {
   ScrollView,
   Pressable,
   StatusBar,
-  StyleSheet,
   Linking,
 } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
@@ -178,7 +177,7 @@ export default function CustomerDetails() {
           </View>
 
           {/* Timeline Section */}
-          <TabTimeline />
+          <TabTimeline requirementId={requirement.id} />
         </View>
       </ScrollView>
     </View>

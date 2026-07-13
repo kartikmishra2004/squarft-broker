@@ -1,76 +1,95 @@
-import { View, Text, Image, Animated } from 'react-native';
+import { View, Text, Image, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { memo, useRef, useEffect } from 'react';
-import { timelineData } from "../../data/timeline";
+import { memo, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchRequirementTimeline } from '../../store/slices/requirementsSlice';
 import TimelineItem from './TimelineItem';
 
-const TabTimeline = memo(function TabTimeline() {
-    const lineAnim = useRef(new Animated.Value(0)).current;
+const formatTimelineDate = (value) => value
+    ? new Date(value).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+    })
+    : null;
 
+const STAGES = [
+    { event_type: 'REQUEST_RECEIVED', title: 'Request received', icon: 'checkmark' },
+    { event_type: 'SALES_OFFICER_ASSIGNED', title: 'Sales officer assigned', icon: 'person-outline' },
+    { event_type: 'PROPERTIES_SHORTLISTED', title: 'Properties shortlisted', icon: 'home-outline' },
+    { event_type: 'SITE_VISIT_SCHEDULED', title: 'Site visit scheduled', icon: 'calendar-outline' },
+    { event_type: 'NEGOTIATION', title: 'Negotiation', icon: 'chatbubbles-outline' },
+    { event_type: 'TOKEN_PAYMENT', title: 'Token payment', icon: 'cash-outline', time: 'Waiting for price agreement' },
+    { event_type: 'REGISTRY_PROCESS', title: 'Registry process', icon: 'document-text-outline', time: 'Documentation queue' },
+    { event_type: 'DEAL_COMPLETED', title: 'Deal completed', icon: 'trophy-outline', time: 'Handover & Keys' },
+];
+
+const TabTimeline = memo(function TabTimeline({ requirementId }) {
+    const dispatch = useDispatch();
+    const { timeline, timelineLoading, timelineError } = useSelector((state) => state.requirements);
+
+    const stages = useMemo(() => STAGES.map((stage, index) => {
+        const event = timeline.find((item) => item.event_type === stage.event_type);
+        return {
+            ...stage,
+            ...event,
+            id: event?.id || stage.event_type,
+            status: event?.status || 'pending',
+            badge: event?.badge || (event?.status === 'current' ? 'IN PROGRESS' : null),
+            stageNumber: index + 1,
+        };
+    }), [timeline]);
     useEffect(() => {
-        Animated.timing(lineAnim, {
-            toValue: 1,
-            duration: timelineData.length * 120 + 400,
-            useNativeDriver: false,
-        }).start();
-    }, []);
+        if (requirementId) dispatch(fetchRequirementTimeline(requirementId));
+    }, [dispatch, requirementId]);
+
+    const completedCount = stages.filter((item) => item.status === 'completed').length;
+    const currentIndex = stages.findIndex((item) => item.status === 'current');
+    const activeStage = currentIndex >= 0 ? currentIndex + 1 : completedCount;
 
     return (
-        <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-100">
+        <View className="bg-white rounded-2xl px-5 pt-5 pb-3 mb-4 shadow-sm border border-gray-100">
             <View className="flex-row justify-between items-center mb-5">
                 <Text className="text-[14px] font-manrope-bold text-[#111827]">Timeline Progress</Text>
                 <View className="bg-[#EEEDFF] px-2.5 py-1 rounded-full">
-                    <Text className="text-[10px] font-manrope-bold text-[#4F48ED]">Stage 5 of 8</Text>
+                    <Text className="text-[10px] font-manrope-bold text-[#4F48ED]">
+                        Stage {activeStage} of {stages.length}
+                    </Text>
                 </View>
             </View>
 
             <View className="relative">
-                {/* Static grey track */}
-                <View className="absolute left-[9px] top-[14px] bottom-[40px] w-[2px] bg-[#E5E7EB]" />
-
-                {/* Animated purple fill */}
-                <Animated.View
-                    style={{
-                        position: 'absolute',
-                        left: 9,
-                        top: 14,
-                        width: 2,
-                        backgroundColor: '#6231FF',
-                        height: lineAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ['0%', '55%'],
-                        }),
-                        borderRadius: 2,
-                        zIndex: 1,
-                    }}
-                />
-
-                {timelineData.map((item, index) => (
+                {timelineLoading && <ActivityIndicator color="#6231FF" />}
+                {!timelineLoading && timelineError && (
+                    <Text className="text-xs text-red-500">{timelineError}</Text>
+                )}
+                {!timelineLoading && !timelineError && stages.map((item, index) => (
                     <TimelineItem
                         key={item.id}
                         index={index}
                         status={item.status}
                         title={item.title}
-                        time={item.time}
+                        time={formatTimelineDate(item.created_at) || item.time}
                         badge={item.badge}
-                        iconName={item.iconName}
+                        iconName={item.metadata?.icon_name || item.icon}
+                        isLast={index === stages.length - 1}
+                        connectorCompleted={['completed', 'current'].includes(stages[index + 1]?.status)}
                     >
-                        {item.images && (
+                        {item.metadata?.images?.length > 0 && (
                             <View className="flex-row gap-2 mt-2 mb-1">
-                                {item.images.map((img, idx) => (
+                                {item.metadata.images.map((img, idx) => (
                                     <Image key={idx} source={{ uri: img }} className="w-[36px] h-[36px] rounded-[8px]" />
                                 ))}
-                                {item.extraImagesCount > 0 && (
+                                {item.metadata.extra_images_count > 0 && (
                                     <View className="w-[36px] h-[36px] bg-[#F3F4F6] rounded-[8px] justify-center items-center">
-                                        <Text className="text-[10px] font-manrope-semibold text-[#4B5563]">+{item.extraImagesCount}</Text>
+                                        <Text className="text-[10px] font-manrope-semibold text-[#4B5563]">+{item.metadata.extra_images_count}</Text>
                                     </View>
                                 )}
                             </View>
                         )}
-                        {item.actionText && item.actionIcon && (
+                        {item.metadata?.action_text && item.metadata?.action_icon && (
                             <View className="mt-2 flex-row items-center bg-[#F3F4F6] px-2 py-1 rounded-[6px] self-start gap-1.5">
-                                <Feather name={item.actionIcon} size={10} color="#6231FF" />
-                                <Text className="text-[10px] font-manrope-semibold text-[#1F2937]">{item.actionText}</Text>
+                                <Feather name={item.metadata.action_icon} size={10} color="#6231FF" />
+                                <Text className="text-[10px] font-manrope-semibold text-[#1F2937]">{item.metadata.action_text}</Text>
                             </View>
                         )}
                         {item.description && (
@@ -78,15 +97,15 @@ const TabTimeline = memo(function TabTimeline() {
                                 <Text className="text-[11px] font-manrope-medium text-[#6B7280] mt-1 pr-4 leading-[16px] flex-1 mb-1">
                                     {item.description}
                                 </Text>
-                                {item.askingPrice && item.currentOffer && (
+                                {item.metadata?.asking_price && item.metadata?.current_offer && (
                                     <View className="mt-2 bg-[#FCFAFF] border border-[#EBE5FF] rounded-lg p-2.5">
                                         <View className="flex-row justify-between items-center mb-1">
                                             <Text className="text-[10px] font-manrope-medium text-[#6B7280]">Asking Price:</Text>
-                                            <Text className="text-[12px] font-manrope-bold text-[#111827]">{item.askingPrice}</Text>
+                                            <Text className="text-[12px] font-manrope-bold text-[#111827]">{item.metadata.asking_price}</Text>
                                         </View>
                                         <View className="flex-row justify-between items-center">
                                             <Text className="text-[10px] font-manrope-medium text-[#6B7280]">Current Offer:</Text>
-                                            <Text className="text-[12px] font-manrope-bold text-[#6231FF]">{item.currentOffer}</Text>
+                                            <Text className="text-[12px] font-manrope-bold text-[#6231FF]">{item.metadata.current_offer}</Text>
                                         </View>
                                     </View>
                                 )}

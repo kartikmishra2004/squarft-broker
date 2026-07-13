@@ -10,9 +10,6 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": "AIzaSyDiYnY4FG1juihWvHEgM-NSz2aEKUsKing"
-      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Allow squarFT Broker to use your location for selecting property and owner addresses."
       }
@@ -29,12 +26,7 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
-      ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDiYnY4FG1juihWvHEgM-NSz2aEKUsKing"
-        }
-      }
+      ]
     },
     "androidNavigationBar": {
       "backgroundColor": "#ffffff",
@@ -58,7 +50,6 @@
         {
           "image": "./assets/icons/icon.png",
           "resizeMode": "cover",
-          "imageWidth": 200,
           "backgroundColor": "#4A43EC",
           "dark": {
             "backgroundColor": "#4A43EC"
@@ -88,7 +79,6 @@
     "splash": {
       "image": "./assets/icons/icon.png",
       "resizeMode": "cover",
-      "imageWidth": 200,
       "backgroundColor": "#4A43EC",
       "dark": {
         "backgroundColor": "#4A43EC"

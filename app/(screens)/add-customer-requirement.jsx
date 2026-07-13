@@ -18,7 +18,14 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
-import { createRequirement, updateRequirementApi, setContactVerified } from "../../store/slices/requirementsSlice";
+import { 
+  createRequirement, 
+  updateRequirementApi, 
+  setContactVerified,
+  sendCustomerOtp,
+  verifyCustomerOtp,
+  clearCustomerOtpState
+} from "../../store/slices/requirementsSlice";
 import { ActivityIndicator } from "react-native";
 import { notifyClientSubmitted } from "../../utils/notificationHelpers";
 
@@ -91,9 +98,14 @@ export default function AddCustomerRequirement() {
   
   const requirementsList = useSelector((state) => state.requirements.list);
   const isContactVerified = useSelector((state) => state.requirements.isContactVerified);
+  const customerOtpToken = useSelector((state) => state.requirements.customerOtpToken);
+  const otpLoading = useSelector((state) => state.requirements.otpLoading);
+  const otpError = useSelector((state) => state.requirements.otpError);
   const existingReq = isEdit ? requirementsList.find(r => r.id.toString() === id.toString()) : null;
 
   const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [countdown, setCountdown] = useState(0);
 
   const [propertyCategory, setPropertyCategory] = useState("Residential");
   const [form, setForm] = useState({
@@ -161,8 +173,18 @@ export default function AddCustomerRequirement() {
       dispatch(setContactVerified(true));
     } else {
       dispatch(setContactVerified(false));
+      dispatch(clearCustomerOtpState());
     }
   }, [id, existingReq]);
+
+  // Countdown timer for OTP resend
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -224,17 +246,47 @@ export default function AddCustomerRequirement() {
     })
   ).current;
 
-  const handleResendOTP = () => {
-    alert("OTP resent to " + form.contact);
-    setOtp("");
+  const handleSendOTP = async () => {
+    if (!form.contact || form.contact.length < 10) {
+      alert("Please enter a valid 10-digit phone number");
+      return;
+    }
+
+    console.log('🔔 [AddCustomerReq] Attempting to send OTP to:', form.contact);
+    
+    try {
+      const result = await dispatch(sendCustomerOtp({ phone: form.contact })).unwrap();
+      console.log('✅ [AddCustomerReq] OTP sent successfully:', result);
+      setOtpSent(true);
+      setCountdown(60); // Start 60 second countdown
+      alert("OTP sent to " + form.contact);
+    } catch (error) {
+      console.error('❌ [AddCustomerReq] Failed to send OTP:', error);
+      alert(error || "Failed to send OTP. Check console for details.");
+    }
   };
 
-  const handleOTPChange = (text) => {
+  const handleOTPChange = async (text) => {
     setOtp(text);
-    if (text.length === 4) {
-      // Mock verification: any 4-digit OTP works
-      dispatch(setContactVerified(true));
-      Keyboard.dismiss();
+    if (text.length === 6 && customerOtpToken) {
+      try {
+        await dispatch(verifyCustomerOtp({ otp_token: customerOtpToken, otp: text })).unwrap();
+        Keyboard.dismiss();
+        alert("Contact number verified successfully!");
+      } catch (error) {
+        alert(error || "Invalid OTP");
+        setOtp("");
+      }
+    }
+  };
+
+  const handlePhoneChange = (text) => {
+    setForm({ ...form, contact: text });
+    if (isContactVerified || otpSent) {
+      dispatch(clearCustomerOtpState());
+      setOtpSent(false);
+      setOtp("");
+      setCountdown(0);
     }
   };
 
@@ -511,36 +563,27 @@ export default function AddCustomerRequirement() {
                 <TextInput
                   placeholder="Enter contact number"
                   keyboardType="phone-pad"
+                  maxLength={10}
                   className="bg-white border border-gray-300 rounded-lg px-3 h-12 text-sm font-lato-regular"
                   value={form.contact}
-                  onChangeText={(text) => {
-                    setForm({ ...form, contact: text });
-                    if (isContactVerified) {
-                      dispatch(setContactVerified(false));
-                    }
-                  }}
+                  onChangeText={handlePhoneChange}
                   onFocus={() => handleFocus("contact")}
+                  editable={!isContactVerified}
                 />
               </View>
               
-              {!isContactVerified && form.contact.length >= 10 && (
-                <View className="flex-row items-center gap-2">
-                  <TextInput
-                    placeholder="OTP"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    className="bg-white border border-gray-300 rounded-lg px-2 h-12 w-20 text-center text-sm font-lato-regular"
-                    value={otp}
-                    onChangeText={handleOTPChange}
-                  />
-                  <Pressable 
-                    onPress={handleResendOTP}
-                    className="bg-[#4A43EC]/10 px-2.5 h-12 items-center justify-center rounded-lg"
-                  >
-                    <Text className="text-[#4A43EC] text-[10px] font-lato-bold">Resend</Text>
-                  </Pressable>
-                </View>
+              {!isContactVerified && form.contact.length === 10 && !otpSent && (
+                <Pressable 
+                  onPress={handleSendOTP}
+                  disabled={otpLoading}
+                  className="bg-[#4A43EC] px-3 h-12 items-center justify-center rounded-lg min-w-[80px]"
+                >
+                  {otpLoading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text className="text-white text-xs font-lato-bold">Send OTP</Text>
+                  )}
+                </Pressable>
               )}
 
               {isContactVerified && (
@@ -549,6 +592,44 @@ export default function AddCustomerRequirement() {
                 </View>
               )}
             </View>
+
+            {/* OTP Input Row */}
+            {otpSent && !isContactVerified && (
+              <View className="flex-row items-center gap-2 mt-3">
+                <View className="flex-1">
+                  <TextInput
+                    placeholder="Enter 6-digit OTP"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    className="bg-white border border-gray-300 rounded-lg px-3 h-12 text-center text-sm font-lato-regular"
+                    value={otp}
+                    onChangeText={handleOTPChange}
+                    editable={!otpLoading}
+                  />
+                </View>
+                <Pressable 
+                  onPress={handleSendOTP}
+                  disabled={countdown > 0 || otpLoading}
+                  className={`px-3 h-12 items-center justify-center rounded-lg min-w-[80px] ${
+                    countdown > 0 || otpLoading ? 'bg-gray-300' : 'bg-[#4A43EC]/10'
+                  }`}
+                >
+                  {otpLoading ? (
+                    <ActivityIndicator color="#4A43EC" size="small" />
+                  ) : (
+                    <Text className={`text-xs font-lato-bold ${countdown > 0 ? 'text-gray-500' : 'text-[#4A43EC]'}`}>
+                      {countdown > 0 ? `${countdown}s` : 'Resend'}
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
+
+            {/* Error Message */}
+            {otpError && (
+              <Text className="text-red-500 text-xs mt-1 font-lato-regular">{otpError}</Text>
+            )}
           </View>
 
           {/* Preferred Location */}

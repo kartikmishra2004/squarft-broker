@@ -25,6 +25,11 @@ import {
     searchLocations,
     setLocationResults,
 } from "../../store/slices/locationSlice";
+import {
+    geocodeGoogleAddress,
+    reverseGeocodeGoogleLocation,
+    searchGoogleLocations,
+} from "../../utils/googleMaps";
 
 const firstParam = (value, fallback = "") => Array.isArray(value) ? value[0] || fallback : value || fallback;
 const getShortAddress = (address = "") => address.split(",").slice(0, 2).join(",").trim() || address;
@@ -34,55 +39,6 @@ const DEFAULT_REGION = {
     latitudeDelta: 0.018,
     longitudeDelta: 0.018,
 };
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-const getGoogleLocation = async ({ latitude, longitude }) => {
-    if (!GOOGLE_MAPS_API_KEY) throw new Error("Google Maps API key is not configured");
-
-    const params = new URLSearchParams({
-        latlng: `${latitude},${longitude}`,
-        key: GOOGLE_MAPS_API_KEY,
-    });
-    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params}`);
-    const data = await response.json();
-    const result = data.results?.[0];
-    if (!response.ok || data.status !== "OK" || !result) {
-        throw new Error(data.error_message || "Google could not resolve this location");
-    }
-
-    const component = (type) => result.address_components?.find((item) => item.types.includes(type))?.long_name || null;
-    return {
-        id: result.place_id,
-        address: result.formatted_address,
-        latitude,
-        longitude,
-        area: component("sublocality_level_1") || component("neighborhood"),
-        city: component("locality") || component("administrative_area_level_2"),
-        state: component("administrative_area_level_1"),
-        pincode: component("postal_code"),
-        provider: "google",
-    };
-};
-
-const searchGoogleLocations = async (query, limit = 6) => {
-    if (!GOOGLE_MAPS_API_KEY) throw new Error("Google Maps API key is not configured");
-
-    const params = new URLSearchParams({ address: query, key: GOOGLE_MAPS_API_KEY, region: "in" });
-    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params}`);
-    const data = await response.json();
-    if (!response.ok || !["OK", "ZERO_RESULTS"].includes(data.status)) {
-        throw new Error(data.error_message || "Google location search failed");
-    }
-
-    return (data.results || []).slice(0, limit).map((result) => ({
-        id: result.place_id,
-        address: result.formatted_address,
-        latitude: result.geometry.location.lat,
-        longitude: result.geometry.location.lng,
-        provider: "google",
-    }));
-};
-
 const asCoordinate = (value) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
@@ -293,7 +249,7 @@ export default function LocationPicker() {
         let resolvedLocation = null;
 
         try {
-            resolvedLocation = await getGoogleLocation({
+            resolvedLocation = await reverseGeocodeGoogleLocation({
                 latitude: centerRegion.latitude,
                 longitude: centerRegion.longitude,
             });
@@ -313,21 +269,23 @@ export default function LocationPicker() {
         router.back();
     };
 
-    const handleUseTypedAddress = () => {
+    const handleUseTypedAddress = async () => {
         const cleanAddress = query.trim();
         if (!cleanAddress) return;
 
-        dispatch(pickLocation({
-            target,
-            address: cleanAddress,
-            latitude: null,
-            longitude: null,
-            city: null,
-            state: null,
-            pincode: null,
-            area: null,
-        }));
-        router.back();
+        try {
+            setLocating(true);
+            const location = await geocodeGoogleAddress(cleanAddress);
+            dispatch(pickLocation({ target, ...location, address: cleanAddress }));
+            router.back();
+        } catch (typedAddressError) {
+            Alert.alert(
+                "Address not found",
+                typedAddressError.message || "Enter a more complete address so nearby projects can be located.",
+            );
+        } finally {
+            setLocating(false);
+        }
     };
 
     const renderLocation = ({ item }) => {

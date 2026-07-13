@@ -1,57 +1,59 @@
 import { Tabs, useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
-import { Animated, Platform, Pressable, View  } from "react-native";
-import { Image } from "expo-image";
-
+import { Platform, Pressable, View } from "react-native";
+import House from "lucide-react-native/icons/house";
+import Bookmark from "lucide-react-native/icons/bookmark";
+import Settings from "lucide-react-native/icons/settings";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
 import KycModal from "../../components/KycModal";
 import { clearCurrentItem } from "../../store/slices/myAddedSlice";
 import { resetProject } from "../../store/slices/projectSlice";
 
 const TAB_COLOR = "#4A43EC";
-const MUTED_TAB_COLOR = "#94A3B8";
+const MUTED_TAB_COLOR = "#62676B";
 
 const tabIcons = {
-    home: ["home", "home-outline"],
-    favourite: ["albums", "albums-outline"],
-    addProject: ["add-circle", "add-circle-outline"],
-    discount: ["cash", "cash-outline"],
-    settings: ["settings", "settings-outline"],
+    home: House,
+    favourite: Bookmark,
+    settings: Settings,
 };
 
 function TabIcon({ name, focused }) {
-    const [activeIcon, inactiveIcon] = tabIcons[name];
-    const iconName = focused ? activeIcon : inactiveIcon;
-    const scale = useRef(new Animated.Value(focused ? 1 : 0.94)).current;
-    const translateY = useRef(new Animated.Value(focused ? -2 : 0)).current;
+    const iconColor = focused ? TAB_COLOR : MUTED_TAB_COLOR;
 
-    useEffect(() => {
-        if (focused) {
-            Animated.parallel([
-                Animated.sequence([
-                    Animated.timing(scale, { toValue: 1.18, duration: 120, useNativeDriver: true }),
-                    Animated.spring(scale, { toValue: 1, friction: 4, tension: 140, useNativeDriver: true }),
-                ]),
-                Animated.sequence([
-                    Animated.timing(translateY, { toValue: -5, duration: 120, useNativeDriver: true }),
-                    Animated.spring(translateY, { toValue: -2, friction: 5, tension: 120, useNativeDriver: true }),
-                ]),
-            ]).start();
-            return;
-        }
+    if (name === "discount") {
+        return (
+            <MaterialCommunityIcons name="sale-outline" size={29} color={iconColor} />
+        );
+    }
 
-        Animated.parallel([
-            Animated.timing(scale, { toValue: 0.94, duration: 120, useNativeDriver: true }),
-            Animated.timing(translateY, { toValue: 0, duration: 120, useNativeDriver: true }),
-        ]).start();
-    }, [focused, scale, translateY]);
+    const Icon = tabIcons[name];
+    if (!Icon) return null;
+    return <Icon size={27} color={iconColor} stroke={iconColor} strokeWidth={1.7} />;
+}
 
+function AddTabIcon() {
     return (
-        <Animated.View style={{ transform: [{ translateY }, { scale }] }}>
-            <Ionicons name={iconName} size={24} color={focused ? TAB_COLOR : MUTED_TAB_COLOR} />
-        </Animated.View>
+        <View
+            pointerEvents="none"
+            style={{
+                width: 68,
+                height: 68,
+                borderRadius: 34,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: TAB_COLOR,
+                transform: [{ translateY: -20 }],
+                shadowColor: TAB_COLOR,
+                shadowOffset: { width: 0, height: 7 },
+                shadowOpacity: 0.32,
+                shadowRadius: 8,
+                elevation: 12,
+            }}
+        >
+            <MaterialCommunityIcons name="plus" size={42} color="#FFFFFF" />
+        </View>
     );
 }
 
@@ -71,16 +73,11 @@ export default function TabsLayout() {
         <>
             <Tabs
                 screenOptions={{
-                    tabBarShowLabel: true,
+                    tabBarShowLabel: false,
                     tabBarActiveTintColor: TAB_COLOR,
                     tabBarInactiveTintColor: MUTED_TAB_COLOR,
-                    tabBarLabelStyle: {
-                        fontSize: 11,
-                        fontFamily: "Lato-Bold",
-                        marginTop: 2,
-                    },
                     tabBarItemStyle: {
-                        paddingTop: 3,
+                        paddingTop: 14,
                     },
                     tabBarStyle: {
                         position: "absolute",
@@ -91,10 +88,10 @@ export default function TabsLayout() {
                         borderTopLeftRadius: 45,
                         borderTopColor: "transparent",
                         backgroundColor: "#fff",
-                        paddingTop: 12,
-                        paddingHorizontal: 15,
+                        paddingTop: 8,
+                        paddingHorizontal: 12,
                         paddingBottom: Platform.OS === "ios" ? iosBottomPadding : Math.max(androidBottomInset, 0),
-                        height: Platform.OS === "ios" ? 88 : 82 + androidBottomInset,
+                        height: Platform.OS === "ios" ? 86 : 76 + androidBottomInset,
                         ...Platform.select({
                             ios: {
                                 shadowColor: "#000",
@@ -130,13 +127,31 @@ export default function TabsLayout() {
                     options={{
                         headerShown: false,
                         tabBarLabel: "Add",
-                        tabBarIcon: ({ focused }) => <TabIcon name="addProject" focused={focused} />,
-                        tabBarButton: (props) => (
-                            <Pressable
-                                {...props}
-                                onPress={openFreshAddProject}
-                            />
-                        ),
+                        tabBarIcon: () => null,
+                        tabBarButton: (props) => {
+                            const { style, children: _children, ...pressableProps } = props;
+                            return (
+                              <Pressable
+                                    {...pressableProps}
+                                    onPress={openFreshAddProject}
+                                    hitSlop={{ top: 22, right: 8, bottom: 8, left: 8 }}
+                                    style={({ pressed }) => [
+                                        style,
+                                        {
+                                           bottom: 34,
+                                            height: 68,
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            opacity: pressed ? 0.88 : 1,
+                                            overflow: "visible",
+                                            zIndex: 20,
+                                        },
+                                    ]}
+                                >
+                                    <AddTabIcon />
+                                </Pressable>
+                            );
+                        },
                     }}
                 />
                 <Tabs.Screen

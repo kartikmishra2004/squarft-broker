@@ -5,7 +5,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { fetchWalletOverview, fetchBankAccounts, fetchTransactions, requestWithdrawalApi } from '../../store/slices/walletSlice';
-import { notifyWithdrawalRequested } from '../../utils/notificationHelpers';
 import * as Clipboard from 'expo-clipboard';
 
 const WalletScreen = () => {
@@ -27,6 +26,10 @@ const WalletScreen = () => {
     }, [withdraw, dispatch]);
     const [amount, setAmount] = useState('');
     const [selectedBankId, setSelectedBankId] = useState(null);
+
+    useEffect(() => {
+        if (bankAccounts.length === 1) setSelectedBankId(bankAccounts[0].id);
+    }, [bankAccounts]);
 
     const bottomSheetModalRef = useRef(null);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
@@ -68,17 +71,10 @@ const WalletScreen = () => {
         }
 
         try {
-            const requestedAmount = amount;
-            const result = await dispatch(requestWithdrawalApi({ requestedAmount, bankAccountId: selectedBankId })).unwrap();
-            await notifyWithdrawalRequested({
-                withdrawalAmount: requestedAmount,
-                withdrawalId: result.withdrawalId || result.transactionId,
-                requestedAt: new Date().toISOString(),
-            });
+            await dispatch(requestWithdrawalApi({ amount: Number(amount) })).unwrap();
             setAmount('');
             setIsWithdrawMode(false);
             Alert.alert("Success", `₹${amount} withdrawal initiated successfully`);
-            dispatch(fetchWalletOverview()); // Refresh balance
         } catch (err) {
             Alert.alert("Error", err || "Withdrawal failed");
         }
@@ -245,12 +241,14 @@ const WalletScreen = () => {
                         </View>
                     )}
 
-                    <Pressable
-                        onPress={() => router.push("/(screens)/add-bank")}
-                        className="bg-[#EBF1FF] py-4 rounded-xl items-center justify-center"
-                    >
-                        <Text className="text-[#4A43EC] text-[14px] font-manrope-bold">+ Add Bank Account</Text>
-                    </Pressable>
+                    {bankAccounts.length === 0 && (
+                        <Pressable
+                            onPress={() => router.push("/(screens)/add-bank")}
+                            className="bg-[#EBF1FF] py-4 rounded-xl items-center justify-center"
+                        >
+                            <Text className="text-[#4A43EC] text-[14px] font-manrope-bold">+ Add Bank Account</Text>
+                        </Pressable>
+                    )}
                     
                     {amount !== '' && (
                         <Pressable

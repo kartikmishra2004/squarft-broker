@@ -52,36 +52,6 @@ const normalizeTransactionPayload = (payload = {}) => ({
     transactions: normalizeTransactionList(payload.transactions),
 });
 
-const normalizeCommission = (commission = {}) => {
-    const propertyName = commission.propertyName || commission.property_name || '';
-    const propertyAddress = commission.propertyAddress || commission.property_address || '';
-    const transferToDetails = commission.transferToDetails || commission.transfer_to_details || '';
-    const createdAt = commission.createdAt || commission.created_at || null;
-
-    return {
-        ...commission,
-        amount: toNumber(commission.amount),
-        propertyName,
-        property_name: propertyName,
-        propertyAddress,
-        property_address: propertyAddress,
-        transferToDetails,
-        transfer_to_details: transferToDetails,
-        createdAt,
-        created_at: createdAt,
-        type: commission.type || 'credit',
-        status: commission.status || 'CREDIT',
-    };
-};
-
-const normalizeCommissionPayload = (payload = {}) => ({
-    count: toNumber(payload.count),
-    page: toNumber(payload.page, 1),
-    commissions: Array.isArray(payload.transactions)
-        ? payload.transactions.map(normalizeCommission)
-        : [],
-});
-
 const normalizeBankAccount = (account = {}) => ({
     ...account,
     bankName: account.bankName || account.bank_name || '',
@@ -90,8 +60,10 @@ const normalizeBankAccount = (account = {}) => ({
     isDefault: Boolean(account.isDefault ?? account.is_default),
 });
 
-const normalizeBankAccounts = (accounts = []) =>
-    Array.isArray(accounts) ? accounts.map(normalizeBankAccount) : [];
+const normalizeBankAccounts = (accounts) => {
+    if (!accounts) return [];
+    return (Array.isArray(accounts) ? accounts : [accounts]).map(normalizeBankAccount);
+};
 
 // Async Thunks
 export const fetchWalletOverview = createAsyncThunk(
@@ -189,7 +161,7 @@ export const fetchBankAccounts = createAsyncThunk(
     async (_, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
-            const response = await fetch(`${API_BASE_URL}/api/v1/broker/wallet/banks`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/broker/bank-account`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             const data = await response.json();
@@ -206,7 +178,7 @@ export const addBankAccountApi = createAsyncThunk(
     async (bankData, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
-            const response = await fetch(`${API_BASE_URL}/api/v1/broker/wallet/banks`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/broker/bank-account`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -216,7 +188,7 @@ export const addBankAccountApi = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return normalizeBankAccount(data.bankAccount);
+            return normalizeBankAccount(data.data);
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -225,23 +197,20 @@ export const addBankAccountApi = createAsyncThunk(
 
 export const requestWithdrawalApi = createAsyncThunk(
     'wallet/requestWithdrawalApi',
-    async (withdrawalData, { getState, rejectWithValue }) => {
+    async ({ amount, notes = null }, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
-            const response = await fetch(`${API_BASE_URL}/api/v1/broker/wallet/withdraw`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/broker/withdrawal/request`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify(withdrawalData),
+                body: JSON.stringify({ amount, notes }),
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
-            return {
-                ...data.data,
-                newBalance: toNumber(data.data?.newBalance),
-            };
+            return data.data;
         } catch (err) {
             return rejectWithValue(err.message);
         }
@@ -303,8 +272,8 @@ const walletSlice = createSlice({
                 state.bankAccounts.push(action.payload);
             })
             // Withdrawal
-            .addCase(requestWithdrawalApi.fulfilled, (state, action) => {
-                state.balance = action.payload.newBalance;
+            .addCase(requestWithdrawalApi.rejected, (state, action) => {
+                state.error = action.payload;
             })
             // Commission History
             .addCase(fetchCommissionHistory.pending, (state) => {

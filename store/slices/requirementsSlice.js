@@ -41,6 +41,23 @@ export const fetchRequirementById = createAsyncThunk(
     }
 );
 
+export const fetchRequirementTimeline = createAsyncThunk(
+    'requirements/fetchRequirementTimeline',
+    async (id, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            const response = await fetch(`${API_BASE_URL}/api/v1/broker/customer/${id}/timeline`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data.message);
+            return data.data;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
 export const createRequirement = createAsyncThunk(
     'requirements/createRequirement',
     async (payload, { getState, rejectWithValue }) => {
@@ -105,14 +122,74 @@ export const deleteRequirementApi = createAsyncThunk(
     }
 );
 
+// Customer Contact OTP Verification
+export const sendCustomerOtp = createAsyncThunk(
+    'requirements/sendCustomerOtp',
+    async ({ phone }, { rejectWithValue }) => {
+        try {
+            console.log('📤 [sendCustomerOtp] Sending OTP to:', phone);
+            console.log('📤 [sendCustomerOtp] API URL:', `${API_BASE_URL}/auth/send-otp`);
+            
+            const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    phone, 
+                    purpose: 'customer_verification' 
+                }),
+            });
+            
+            const data = await response.json();
+            console.log('📥 [sendCustomerOtp] Response status:', response.status);
+            console.log('📥 [sendCustomerOtp] Response data:', data);
+            
+            if (!response.ok) {
+                console.error('❌ [sendCustomerOtp] Error:', data.message);
+                return rejectWithValue(data.message);
+            }
+            
+            console.log('✅ [sendCustomerOtp] Success');
+            return data;
+        } catch (err) {
+            console.error('❌ [sendCustomerOtp] Exception:', err.message);
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
+export const verifyCustomerOtp = createAsyncThunk(
+    'requirements/verifyCustomerOtp',
+    async ({ otp_token, otp }, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ otp_token, otp }),
+            });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data.message);
+            return data;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
 const requirementsSlice = createSlice({
     name: 'requirements',
     initialState: {
         list: [],
         currentRequirement: null,
+        timeline: [],
+        timelineLoading: false,
+        timelineError: null,
         loading: false,
         error: null,
         isContactVerified: false,
+        customerOtpToken: null,
+        customerVerifiedToken: null,
+        otpLoading: false,
+        otpError: null,
         pagination: {
             total: 0,
             page: 1,
@@ -123,6 +200,12 @@ const requirementsSlice = createSlice({
     reducers: {
         setContactVerified: (state, action) => {
             state.isContactVerified = action.payload;
+        },
+        clearCustomerOtpState: (state) => {
+            state.customerOtpToken = null;
+            state.customerVerifiedToken = null;
+            state.isContactVerified = false;
+            state.otpError = null;
         },
         clearError: (state) => {
             state.error = null;
@@ -148,6 +231,19 @@ const requirementsSlice = createSlice({
             .addCase(fetchRequirementById.fulfilled, (state, action) => {
                 state.currentRequirement = action.payload;
             })
+            .addCase(fetchRequirementTimeline.pending, (state) => {
+                state.timelineLoading = true;
+                state.timelineError = null;
+                state.timeline = [];
+            })
+            .addCase(fetchRequirementTimeline.fulfilled, (state, action) => {
+                state.timelineLoading = false;
+                state.timeline = action.payload;
+            })
+            .addCase(fetchRequirementTimeline.rejected, (state, action) => {
+                state.timelineLoading = false;
+                state.timelineError = action.payload;
+            })
             // Create
             .addCase(createRequirement.fulfilled, (state, action) => {
                 state.list.unshift(action.payload);
@@ -165,9 +261,37 @@ const requirementsSlice = createSlice({
             // Delete
             .addCase(deleteRequirementApi.fulfilled, (state, action) => {
                 state.list = state.list.filter(item => item.id !== action.payload);
+            })
+            // Send Customer OTP
+            .addCase(sendCustomerOtp.pending, (state) => {
+                state.otpLoading = true;
+                state.otpError = null;
+            })
+            .addCase(sendCustomerOtp.fulfilled, (state, action) => {
+                state.otpLoading = false;
+                state.customerOtpToken = action.payload.otp_token;
+            })
+            .addCase(sendCustomerOtp.rejected, (state, action) => {
+                state.otpLoading = false;
+                state.otpError = action.payload;
+            })
+            // Verify Customer OTP
+            .addCase(verifyCustomerOtp.pending, (state) => {
+                state.otpLoading = true;
+                state.otpError = null;
+            })
+            .addCase(verifyCustomerOtp.fulfilled, (state, action) => {
+                state.otpLoading = false;
+                state.isContactVerified = true;
+                state.customerVerifiedToken = action.payload.verified_token;
+            })
+            .addCase(verifyCustomerOtp.rejected, (state, action) => {
+                state.otpLoading = false;
+                state.otpError = action.payload;
+                state.isContactVerified = false;
             });
     },
 });
 
-export const { setContactVerified, clearError } = requirementsSlice.actions;
+export const { setContactVerified, clearCustomerOtpState, clearError } = requirementsSlice.actions;
 export default requirementsSlice.reducer;

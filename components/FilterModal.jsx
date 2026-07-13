@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Image, Dimensions } from 'react-native';
-import { BottomSheetModal, BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetScrollView, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PremiumRangeSlider from './PremiumRangeSlider';
 
 const { width } = Dimensions.get('window');
@@ -50,6 +51,7 @@ const bhkOptions = [
 const bhkSubTypes = ["plot", "villa", "apartment", "rowhouse"];
 
 const FilterModal = ({ visible, onClose, onApplyFilters }) => {
+    const insets = useSafeAreaInsets();
     const bottomSheetModalRef = useRef(null);
     const snapPoints = useMemo(() => ['90%'], []);
     
@@ -137,17 +139,24 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
             backdropComponent={renderBackdrop}
             onDismiss={onClose}
             enablePanDownToClose={true}
+            enableDynamicSizing={false}
             handleIndicatorStyle={{ backgroundColor: '#D1D5DB', width: 40 }}
         >
             {/* FIXED: Changed layout element container into a clean flex column alignment base */}
-            <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+            <BottomSheetView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
                 {/* Header */}
                 <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
                     <Text style={{ fontSize: 20, fontWeight: '700', color: '#1F2937' }}>Filter</Text>
                 </View>
 
                 {/* FIXED: Content scrolls dynamically within layout viewport window boundaries */}
-                <BottomSheetScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
+                <BottomSheetScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingBottom: 32 }}
+                    nestedScrollEnabled
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator
+                >
                     {/* Category Selection */}
                     <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
                         <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 12 }}>
@@ -297,7 +306,8 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
                     borderTopWidth: 1,
                     borderTopColor: '#E5E7EB',
                     paddingHorizontal: 20,
-                    paddingVertical: 16,
+                    paddingTop: 16,
+                    paddingBottom: Math.max(insets.bottom, 12),
                     flexDirection: 'row',
                     gap: 12,
                 }}>
@@ -332,7 +342,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
                         </Text>
                     </TouchableOpacity>
                 </View>
-            </View>
+            </BottomSheetView>
         </BottomSheetModal>
     );
 };

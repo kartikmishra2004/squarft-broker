@@ -32,10 +32,9 @@ import { clearCurrentItem } from "../../store/slices/myAddedSlice";
 import { clearPickedLocation } from "../../store/slices/locationSlice";
 import { clearPickedNearbyProject } from "../../store/slices/propertySlice";
 import { notifyPropertyUploaded } from "../../utils/notificationHelpers";
+import { geocodeGoogleAddress } from "../../utils/googleMaps";
 
 const { width } = Dimensions.get("window");
-const DEFAULT_NEARBY_LATITUDE = 23.2599;
-const DEFAULT_NEARBY_LONGITUDE = 77.4126;
 const DEFAULT_NEARBY_RADIUS = 10;
 
 const firstParam = (value, fallback = "") => Array.isArray(value) ? value[0] || fallback : value || fallback;
@@ -626,16 +625,38 @@ export default function AddProject() {
         });
     }, [locationText, ownerAddress, ownerAddressLatitude, ownerAddressLongitude, propertyLatitude, propertyLongitude]);
 
-    const openNearbyProjects = useCallback(() => {
-        router.push({
-            pathname: "/(screens)/nearby-projects",
-            params: {
-                latitude: String(propertyLatitude || DEFAULT_NEARBY_LATITUDE),
-                longitude: String(propertyLongitude || DEFAULT_NEARBY_LONGITUDE),
-                radius: String(DEFAULT_NEARBY_RADIUS),
-            },
-        });
-    }, [propertyLatitude, propertyLongitude]);
+    const resolvePropertyLocation = useCallback(async () => {
+        if (propertyLatitude !== null && propertyLongitude !== null) {
+            return { latitude: propertyLatitude, longitude: propertyLongitude };
+        }
+
+        const address = [locationText, city, stateText, pincode].filter(Boolean).join(", ");
+        if (!address.trim()) throw new Error("Enter the property address before finding nearby projects.");
+
+        const resolved = await geocodeGoogleAddress(address);
+        setPropertyLatitude(resolved.latitude);
+        setPropertyLongitude(resolved.longitude);
+        if (!city.trim() && resolved.city) setCity(resolved.city);
+        if (!stateText.trim() && resolved.state) setStateText(resolved.state);
+        if (!pincode.trim() && resolved.pincode) setPincode(resolved.pincode);
+        return resolved;
+    }, [city, locationText, pincode, propertyLatitude, propertyLongitude, stateText]);
+
+    const openNearbyProjects = useCallback(async () => {
+        try {
+            const coordinates = await resolvePropertyLocation();
+            router.push({
+                pathname: "/(screens)/nearby-projects",
+                params: {
+                    latitude: String(coordinates.latitude),
+                    longitude: String(coordinates.longitude),
+                    radius: String(DEFAULT_NEARBY_RADIUS),
+                },
+            });
+        } catch (error) {
+            Alert.alert("Location required", getErrorMessage(error));
+        }
+    }, [resolvePropertyLocation]);
 
     const getErrorMessage = (error) => {
         if (typeof error === "string") return error;
@@ -674,6 +695,8 @@ export default function AddProject() {
             throw new Error("City and State are required.");
         }
 
+        const coordinates = await resolvePropertyLocation();
+
         await dispatch(updatePropertyDetails({
             projectId: propertyId,
             name: propertyName.trim() || undefined,
@@ -684,15 +707,15 @@ export default function AddProject() {
             area: locationText.trim() || undefined,
             state: stateText.trim(),
             pincode: pincode.trim() || undefined,
-            latitude: propertyLatitude,
-            longitude: propertyLongitude,
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
             nearby_project: nearbyProject.trim() || undefined,
             khasra_number: khasraNumber.trim() || undefined,
             property_age: propertyAge ? Number(propertyAge) : undefined,
             owner_contact: ownerContact.trim().replace(/\s+/g, "") || undefined,
             owner_email: ownerEmail.trim() || undefined,
         })).unwrap();
-    }, [city, dispatch, flatNumber, khasraNumber, locationText, nearbyProject, ownerContact, ownerEmail, pincode, propertyAge, propertyLatitude, propertyLongitude, propertyName, stateText, towerNumber]);
+    }, [city, dispatch, flatNumber, khasraNumber, locationText, nearbyProject, ownerContact, ownerEmail, pincode, propertyAge, propertyName, resolvePropertyLocation, stateText, towerNumber]);
 
     const saveAreaDetails = useCallback(async (propertyId) => {
         if (!totalAreaValue && !carpetAreaValue) return;
@@ -1070,7 +1093,11 @@ export default function AddProject() {
                                         placeholder="Select Address"
                                         placeholderTextColor="#C0C0C0"
                                         value={ownerAddress}
-                                        onChangeText={setOwnerAddress}
+                                        onChangeText={(value) => {
+                                            setOwnerAddress(value);
+                                            setOwnerAddressLatitude(null);
+                                            setOwnerAddressLongitude(null);
+                                        }}
                                     />
                                     <TouchableOpacity
                                         onPress={() => openLocationPicker("owner_address")}
@@ -1157,7 +1184,11 @@ export default function AddProject() {
                                         placeholder="Address & Landmark"
                                         placeholderTextColor="#C0C0C0"
                                         value={locationText}
-                                        onChangeText={setLocationText}
+                                        onChangeText={(value) => {
+                                            setLocationText(value);
+                                            setPropertyLatitude(null);
+                                            setPropertyLongitude(null);
+                                        }}
                                     />
                                     <TouchableOpacity
                                         onPress={() => openLocationPicker("property_location")}

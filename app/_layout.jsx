@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Platform, useColorScheme } from "react-native";
 import * as NavigationBar from "expo-navigation-bar";
 import { Provider, useDispatch } from 'react-redux';
@@ -24,6 +24,7 @@ import {
 } from "@expo-google-fonts/manrope";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import PushNotificationRegistrar from "../components/PushNotificationRegistrar";
+import AnimatedSplashScreen from "../components/AnimatedSplashScreen";
 import {
     Roboto_400Regular,
     Roboto_500Medium,
@@ -43,6 +44,7 @@ function AppInit({ children }) {
 
 export default function AuthLayout() {
     const colorScheme = useColorScheme();
+    const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
     const [fontsLoaded] = useFonts({
         'Lato-Regular': Lato_400Regular,
         'Lato-Bold': Lato_700Bold,
@@ -67,6 +69,7 @@ export default function AuthLayout() {
 
     useEffect(() => {
         if (fontsLoaded) {
+            // Hide native splash immediately when fonts are loaded
             SplashScreen.hideAsync().catch((err) => {
                 console.warn("SplashScreen.hideAsync error:", err);
             });
@@ -87,6 +90,9 @@ export default function AuthLayout() {
                             <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
                             <Stack.Screen name="(screens)" options={{ headerShown: false }} />
                         </Stack>
+                        {showAnimatedSplash && (
+                            <AnimatedSplashScreen onFinish={() => setShowAnimatedSplash(false)} />
+                        )}
                     </AppInit>
                 </BottomSheetModalProvider>
             </GestureHandlerRootView>
